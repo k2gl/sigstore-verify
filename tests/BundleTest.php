@@ -10,11 +10,13 @@ use K2gl\Sigstore\Bundle;
 use K2gl\Sigstore\Exception\InvalidBundleException;
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
 use K2gl\Sigstore\Internal\Json;
+use K2gl\Sigstore\MessageSignature;
 use K2gl\Sigstore\TlogEntry;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(Bundle::class)]
+#[CoversClass(MessageSignature::class)]
 #[CoversClass(TlogEntry::class)]
 #[CoversClass(Json::class)]
 #[CoversClass(InvalidBundleException::class)]
@@ -31,16 +33,50 @@ final class BundleTest extends TestCase
         ];
     }
 
+    /** @return array<string, mixed> */
+    private function minimalTlogEntry(): array
+    {
+        return [
+            'logIndex' => '1',
+            'logId' => ['keyId' => base64_encode('key-id')],
+            'kindVersion' => ['kind' => 'hashedrekord', 'version' => '0.0.1'],
+            'integratedTime' => '1700000000',
+            'inclusionPromise' => ['signedEntryTimestamp' => base64_encode('set')],
+            'canonicalizedBody' => base64_encode('{}'),
+        ];
+    }
+
     public function testParsesRealProvenanceBundle(): void
     {
         $raw = file_get_contents(__DIR__ . '/fixtures/bundle-provenance.json');
         self::assertIsString($raw);
 
         $bundle = Bundle::fromJson($raw);
-        fact($bundle->dsseEnvelope->payloadType)->is('application/vnd.in-toto+json');
+
+        fact($bundle->isDsse())->true();
+        fact($bundle->dsseEnvelope?->payloadType)->is('application/vnd.in-toto+json');
         fact(count($bundle->tlogEntries))->is(1);
         fact($bundle->tlogEntries[0]->kind)->is('intoto');
         fact($bundle->leafCertificate === '')->false();
+    }
+
+    public function testParsesMessageSignatureBundle(): void
+    {
+        $bundle = Bundle::fromArray([
+            'mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json',
+            'verificationMaterial' => [
+                'certificate' => ['rawBytes' => base64_encode('der')],
+                'tlogEntries' => [$this->minimalTlogEntry()],
+            ],
+            'messageSignature' => [
+                'messageDigest' => ['algorithm' => 'SHA2_256', 'digest' => base64_encode('digest')],
+                'signature' => base64_encode('sig'),
+            ],
+        ]);
+
+        fact($bundle->isMessageSignature())->true();
+        fact($bundle->isDsse())->false();
+        fact($bundle->messageSignature?->hashAlgorithm)->is('SHA2_256');
     }
 
     public function testRejectsNonObjectJson(): void
@@ -55,15 +91,6 @@ final class BundleTest extends TestCase
         Bundle::fromArray(['mediaType' => 'application/json', 'dsseEnvelope' => $this->minimalDsseEnvelope()]);
     }
 
-    public function testRejectsMessageSignatureContent(): void
-    {
-        $this->expectException(UnsupportedBundleException::class);
-        Bundle::fromArray([
-            'mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json',
-            'messageSignature' => ['messageDigest' => ['algorithm' => 'SHA2_256', 'digest' => base64_encode('x')]],
-        ]);
-    }
-
     public function testRejectsPublicKeyMaterial(): void
     {
         $this->expectException(UnsupportedBundleException::class);
@@ -71,7 +98,7 @@ final class BundleTest extends TestCase
             'mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json',
             'verificationMaterial' => [
                 'publicKey' => ['hint' => 'abc'],
-                'tlogEntries' => [],
+                'tlogEntries' => [$this->minimalTlogEntry()],
             ],
             'dsseEnvelope' => $this->minimalDsseEnvelope(),
         ]);
@@ -80,7 +107,13 @@ final class BundleTest extends TestCase
     public function testRejectsMissingContent(): void
     {
         $this->expectException(InvalidBundleException::class);
-        Bundle::fromArray(['mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json']);
+        Bundle::fromArray([
+            'mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json',
+            'verificationMaterial' => [
+                'certificate' => ['rawBytes' => base64_encode('der')],
+                'tlogEntries' => [$this->minimalTlogEntry()],
+            ],
+        ]);
     }
 
     public function testRejectsEmptyTlogEntries(): void

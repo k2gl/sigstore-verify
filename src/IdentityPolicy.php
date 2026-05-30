@@ -39,6 +39,7 @@ final class IdentityPolicy
                 $this->issuer,
             ));
         }
+
         if (!in_array($this->san, $subjectAlternativeNames, true)) {
             throw new VerificationFailedException(sprintf(
                 'Certificate identity does not include the expected SAN "%s".',

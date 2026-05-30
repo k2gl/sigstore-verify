@@ -32,6 +32,7 @@ final class CertificateAuthority
         $certChain = TrustRootJson::object($data, 'certChain', 'cert_chain');
 
         $der = [];
+
         foreach (TrustRootJson::list($certChain, 'certificates') as $entry) {
             if (!is_array($entry)) {
                 throw new Exception\TrustRootException('Trusted-root certificate entry must be an object.');
@@ -43,9 +44,9 @@ final class CertificateAuthority
         $validFor = TrustRootJson::object($data, 'validFor', 'valid_for');
 
         return new self(
-            $der,
-            TrustRootJson::dateOrNull($validFor, 'start'),
-            TrustRootJson::dateOrNull($validFor, 'end'),
+            certChainDer: $der,
+            validForStart: TrustRootJson::dateOrNull($validFor, 'start'),
+            validForEnd: TrustRootJson::dateOrNull($validFor, 'end'),
         );
     }
 
@@ -54,9 +55,11 @@ final class CertificateAuthority
         if ($this->validForStart !== null && $moment < $this->validForStart) {
             return false;
         }
+
         if ($this->validForEnd !== null && $moment > $this->validForEnd) {
             return false;
         }
+
         return true;
     }
 
@@ -73,6 +76,7 @@ final class CertificateAuthority
                 $this->certChainDer,
             );
         }
+
         return $this->certificates;
     }
 }

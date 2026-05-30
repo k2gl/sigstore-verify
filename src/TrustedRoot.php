@@ -31,6 +31,7 @@ final class TrustedRoot
         if ($certificateAuthorities === []) {
             throw new TrustRootException('Trusted root has no certificate authorities.');
         }
+
         if ($transparencyLogs === []) {
             throw new TrustRootException('Trusted root has no transparency logs.');
         }
@@ -41,6 +42,7 @@ final class TrustedRoot
         $data = TrustRootJson::decodeObject($json);
 
         $authorities = [];
+
         foreach (TrustRootJson::list($data, 'certificateAuthorities', 'certificate_authorities') as $entry) {
             if (!is_array($entry)) {
                 throw new TrustRootException('Certificate authority entry must be an object.');
@@ -50,6 +52,7 @@ final class TrustedRoot
         }
 
         $logs = [];
+
         foreach (TrustRootJson::list($data, 'tlogs') as $entry) {
             if (!is_array($entry)) {
                 throw new TrustRootException('Transparency log entry must be an object.');
@@ -69,6 +72,7 @@ final class TrustedRoot
                 return $log;
             }
         }
+
         return null;
     }
 }

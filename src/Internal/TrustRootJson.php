@@ -25,9 +25,11 @@ final class TrustRootJson
         } catch (\JsonException $e) {
             throw new TrustRootException('Trusted root is not valid JSON: ' . $e->getMessage(), previous: $e);
         }
+
         if (!is_array($data) || array_is_list($data)) {
             throw new TrustRootException('Trusted root must be a JSON object.');
         }
+
         /** @var array<string, mixed> $data */
         return $data;
     }
@@ -44,6 +46,7 @@ final class TrustRootJson
                 return $data[$key];
             }
         }
+
         return null;
     }
 
@@ -51,9 +54,11 @@ final class TrustRootJson
     public static function string(array $data, string ...$keys): string
     {
         $value = self::pick($data, ...$keys);
+
         if (!is_string($value) || $value === '') {
             throw new TrustRootException(sprintf('Missing trusted-root string field "%s".', $keys[0]));
         }
+
         return $value;
     }
 
@@ -64,9 +69,11 @@ final class TrustRootJson
     public static function object(array $data, string ...$keys): array
     {
         $value = self::pick($data, ...$keys);
+
         if (!is_array($value) || array_is_list($value) && $value !== []) {
             throw new TrustRootException(sprintf('Trusted-root field "%s" must be a JSON object.', $keys[0]));
         }
+
         /** @var array<string, mixed> $value */
         return $value;
     }
@@ -78,9 +85,11 @@ final class TrustRootJson
     public static function list(array $data, string ...$keys): array
     {
         $value = self::pick($data, ...$keys);
+
         if (!is_array($value) || !array_is_list($value)) {
             throw new TrustRootException(sprintf('Trusted-root field "%s" must be a JSON array.', $keys[0]));
         }
+
         return $value;
     }
 
@@ -88,13 +97,16 @@ final class TrustRootJson
     public static function base64(array $data, string ...$keys): string
     {
         $value = self::pick($data, ...$keys);
+
         if (!is_string($value) || $value === '') {
             throw new TrustRootException(sprintf('Missing trusted-root base64 field "%s".', $keys[0]));
         }
         $decoded = base64_decode($value, true);
+
         if ($decoded === false) {
             throw new TrustRootException(sprintf('Trusted-root field "%s" is not valid base64.', $keys[0]));
         }
+
         return $decoded;
     }
 
@@ -102,9 +114,11 @@ final class TrustRootJson
     public static function dateOrNull(array $data, string ...$keys): ?\DateTimeImmutable
     {
         $value = self::pick($data, ...$keys);
+
         if ($value === null) {
             return null;
         }
+
         if (!is_string($value)) {
             throw new TrustRootException(sprintf('Trusted-root field "%s" must be an RFC 3339 timestamp.', $keys[0]));
         }

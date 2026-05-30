@@ -27,9 +27,11 @@ final class Json
         } catch (\JsonException $e) {
             throw new InvalidBundleException('Bundle is not valid JSON: ' . $e->getMessage(), previous: $e);
         }
+
         if (!is_array($data) || array_is_list($data)) {
             throw new InvalidBundleException('Bundle must be a JSON object.');
         }
+
         /** @var array<string, mixed> $data */
         return $data;
     }
@@ -38,9 +40,11 @@ final class Json
     public static function string(array $data, string $key): string
     {
         $value = $data[$key] ?? null;
+
         if (!is_string($value) || $value === '') {
             throw new InvalidBundleException(sprintf('Missing or empty string field "%s".', $key));
         }
+
         return $value;
     }
 
@@ -48,9 +52,11 @@ final class Json
     public static function int(array $data, string $key): int
     {
         $value = $data[$key] ?? null;
+
         if (is_int($value)) {
             return $value;
         }
+
         if (is_string($value) && preg_match('/^-?\d+$/', $value) === 1) {
             return (int) $value;
         }
@@ -64,9 +70,11 @@ final class Json
     public static function object(array $data, string $key): array
     {
         $value = $data[$key] ?? null;
+
         if (!is_array($value) || array_is_list($value) && $value !== []) {
             throw new InvalidBundleException(sprintf('Field "%s" must be a JSON object.', $key));
         }
+
         /** @var array<string, mixed> $value */
         return $value;
     }
@@ -78,9 +86,11 @@ final class Json
     public static function list(array $data, string $key): array
     {
         $value = $data[$key] ?? null;
+
         if (!is_array($value) || !array_is_list($value)) {
             throw new InvalidBundleException(sprintf('Field "%s" must be a JSON array.', $key));
         }
+
         return $value;
     }
 
@@ -92,13 +102,16 @@ final class Json
     public static function base64(array $data, string $key): string
     {
         $value = $data[$key] ?? null;
+
         if (!is_string($value) || $value === '') {
             throw new InvalidBundleException(sprintf('Missing or empty base64 field "%s".', $key));
         }
         $decoded = base64_decode($value, true);
+
         if ($decoded === false) {
             throw new InvalidBundleException(sprintf('Field "%s" is not valid base64.', $key));
         }
+
         return $decoded;
     }
 }

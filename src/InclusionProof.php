@@ -27,11 +27,13 @@ final class InclusionProof
     public static function fromArray(array $data): self
     {
         $hashes = [];
+
         foreach (Json::list($data, 'hashes') as $hash) {
             if (!is_string($hash)) {
                 throw new Exception\InvalidBundleException('Inclusion proof hash must be a string.');
             }
             $decoded = base64_decode($hash, true);
+
             if ($decoded === false) {
                 throw new Exception\InvalidBundleException('Inclusion proof hash is not valid base64.');
             }
@@ -41,11 +43,11 @@ final class InclusionProof
         $checkpoint = Json::object($data, 'checkpoint');
 
         return new self(
-            Json::int($data, 'logIndex'),
-            Json::int($data, 'treeSize'),
-            Json::base64($data, 'rootHash'),
-            $hashes,
-            new Checkpoint(Json::string($checkpoint, 'envelope')),
+            logIndex: Json::int($data, 'logIndex'),
+            treeSize: Json::int($data, 'treeSize'),
+            rootHash: Json::base64($data, 'rootHash'),
+            hashes: $hashes,
+            checkpoint: new Checkpoint(Json::string($checkpoint, 'envelope')),
         );
     }
 }

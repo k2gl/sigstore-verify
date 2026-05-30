@@ -12,14 +12,12 @@ use K2gl\Sigstore\Internal\Json;
 
 /**
  * A parsed Sigstore bundle (the .sigstore.json produced by cosign, gitsign, npm
- * provenance, etc.). This version models the DSSE-attestation shape only: a
- * Fulcio leaf certificate, one or more Rekor transparency-log entries, and a
- * DSSE envelope.
+ * provenance, etc.): a Fulcio leaf certificate, one or more Rekor
+ * transparency-log entries, and exactly one content — a DSSE envelope (an
+ * attestation) or a message signature (an artifact signature).
  *
- * Anything outside that shape — a message-signature artifact bundle or a
- * public-key (keyless-without-certificate) bundle — is rejected at parse time
- * with {@see UnsupportedBundleException}, so it can never be mistaken for a
- * verifiable attestation.
+ * Public-key (keyless-without-certificate) bundles are rejected at parse time
+ * with {@see UnsupportedBundleException}: this verifier requires a certificate.
  *
  * @see https://github.com/sigstore/protobuf-specs/blob/main/protos/sigstore_bundle.proto
  */
@@ -32,8 +30,19 @@ final class Bundle
         public readonly string $mediaType,
         public readonly string $leafCertificate,
         public readonly array $tlogEntries,
-        public readonly Envelope $dsseEnvelope,
+        public readonly ?Envelope $dsseEnvelope = null,
+        public readonly ?MessageSignature $messageSignature = null,
     ) {
+    }
+
+    public function isDsse(): bool
+    {
+        return $this->dsseEnvelope !== null;
+    }
+
+    public function isMessageSignature(): bool
+    {
+        return $this->messageSignature !== null;
     }
 
     public static function fromJson(string $json): self
@@ -45,27 +54,34 @@ final class Bundle
     public static function fromArray(array $data): self
     {
         $mediaType = Json::string($data, 'mediaType');
+
         if (!str_starts_with($mediaType, self::MEDIA_TYPE_PREFIX)) {
             throw new UnsupportedBundleException(sprintf('Unsupported bundle media type "%s".', $mediaType));
         }
 
-        if (!isset($data['dsseEnvelope'])) {
-            if (isset($data['messageSignature'])) {
-                throw new UnsupportedBundleException(
-                    'This version verifies DSSE-attestation bundles only; message-signature bundles are not supported.'
-                );
-            }
-            throw new InvalidBundleException('Bundle has no dsseEnvelope content.');
+        $material = Json::object($data, 'verificationMaterial');
+        $leaf = self::leafCertificate($material);
+        $tlogEntries = self::tlogEntries($material);
+
+        if (isset($data['dsseEnvelope'])) {
+            return new self(
+                mediaType: $mediaType,
+                leafCertificate: $leaf,
+                tlogEntries: $tlogEntries,
+                dsseEnvelope: self::dsseEnvelope(Json::object($data, 'dsseEnvelope')),
+            );
         }
 
-        $material = Json::object($data, 'verificationMaterial');
+        if (isset($data['messageSignature'])) {
+            return new self(
+                mediaType: $mediaType,
+                leafCertificate: $leaf,
+                tlogEntries: $tlogEntries,
+                messageSignature: MessageSignature::fromArray(Json::object($data, 'messageSignature')),
+            );
+        }
 
-        return new self(
-            $mediaType,
-            self::leafCertificate($material),
-            self::tlogEntries($material),
-            self::dsseEnvelope(Json::object($data, 'dsseEnvelope')),
-        );
+        throw new InvalidBundleException('Bundle has neither dsseEnvelope nor messageSignature content.');
     }
 
     /** @param array<string, mixed> $material */
@@ -74,14 +90,18 @@ final class Bundle
         if (isset($material['certificate'])) {
             return Json::base64(Json::object($material, 'certificate'), 'rawBytes');
         }
+
         if (isset($material['x509CertificateChain'])) {
             $chain = Json::list(Json::object($material, 'x509CertificateChain'), 'certificates');
             $leaf = $chain[0] ?? null;
+
             if (!is_array($leaf)) {
                 throw new InvalidBundleException('x509CertificateChain.certificates is empty.');
             }
+
             return Json::base64($leaf, 'rawBytes');
         }
+
         if (isset($material['publicKey'])) {
             throw new UnsupportedBundleException(
                 'This version verifies certificate-based bundles only; public-key bundles are not supported.'
@@ -97,6 +117,7 @@ final class Bundle
     private static function tlogEntries(array $material): array
     {
         $entries = [];
+
         foreach (Json::list($material, 'tlogEntries') as $raw) {
             if (!is_array($raw)) {
                 throw new InvalidBundleException('Each tlog entry must be a JSON object.');
@@ -104,9 +125,11 @@ final class Bundle
             /** @var array<string, mixed> $raw */
             $entries[] = TlogEntry::fromArray($raw);
         }
+
         if ($entries === []) {
             throw new InvalidBundleException('Bundle has no transparency-log entries.');
         }
+
         return $entries;
     }
 

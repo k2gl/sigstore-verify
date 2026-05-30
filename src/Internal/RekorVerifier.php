@@ -19,8 +19,9 @@ use K2gl\Sigstore\TrustedRoot;
  *  - the Merkle inclusion proof, if present, recomputes the signed checkpoint
  *    root, and the checkpoint note signature is valid;
  *  - at least one of the two forms of proof is present and valid; and
- *  - the entry body is bound to the bundle by matching its payload hash to the
- *    DSSE envelope payload.
+ *  - the entry body is bound to the bundle by matching the hash it records
+ *    (the DSSE payload hash, or the signed artifact's digest) against the
+ *    expected hex digest the caller computed from the bundle content.
  *
  * Every failure throws; an entry that cannot be bound or proven is never
  * accepted.
@@ -30,29 +31,36 @@ use K2gl\Sigstore\TrustedRoot;
 final class RekorVerifier
 {
     /** @throws VerificationFailedException|UnsupportedBundleException */
-    public function verify(TlogEntry $entry, TrustedRoot $trustedRoot, string $envelopePayload): void
-    {
+    public function verify(
+        TlogEntry $entry,
+        TrustedRoot $trustedRoot,
+        string $expectedHashHex,
+    ): void {
         $log = $trustedRoot->findTransparencyLog($entry->logId);
+
         if ($log === null) {
             throw new VerificationFailedException('No trusted transparency log matches the entry log id.');
         }
 
         $proven = false;
+
         if ($entry->signedEntryTimestamp !== null) {
             $this->verifySignedEntryTimestamp($entry, $log);
             $proven = true;
         }
+
         if ($entry->inclusionProof !== null) {
             $this->verifyInclusionProof($entry, $entry->inclusionProof, $log);
             $proven = true;
         }
+
         if (!$proven) {
             throw new VerificationFailedException(
                 'Transparency log entry has neither an inclusion promise nor an inclusion proof.'
             );
         }
 
-        $this->verifyPayloadBinding($entry, $envelopePayload);
+        $this->verifyPayloadBinding($entry, $expectedHashHex);
     }
 
     private function verifySignedEntryTimestamp(TlogEntry $entry, TransparencyLogInstance $log): void
@@ -66,8 +74,13 @@ final class RekorVerifier
             'logIndex' => $entry->logIndex,
         ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 
-        if ($entry->signedEntryTimestamp === null
-            || !Ecdsa::verifyDer($canonical, $entry->signedEntryTimestamp, $log->publicKeyPem)) {
+        $valid = $entry->signedEntryTimestamp !== null && Ecdsa::verifyDer(
+            message: $canonical,
+            derSignature: $entry->signedEntryTimestamp,
+            publicKeyPem: $log->publicKeyPem,
+        );
+
+        if (!$valid) {
             throw new VerificationFailedException('Rekor signed entry timestamp is invalid.');
         }
     }
@@ -78,22 +91,30 @@ final class RekorVerifier
         TransparencyLogInstance $log,
     ): void {
         $computedRoot = MerkleInclusion::computeRoot(
-            $proof->logIndex,
-            $proof->treeSize,
-            MerkleInclusion::leafHash($entry->canonicalizedBody),
-            $proof->hashes,
+            leafIndex: $proof->logIndex,
+            treeSize: $proof->treeSize,
+            leafHash: MerkleInclusion::leafHash($entry->canonicalizedBody),
+            proof: $proof->hashes,
         );
+
         if (!hash_equals($proof->rootHash, $computedRoot)) {
             throw new VerificationFailedException('Merkle inclusion proof does not reproduce the log root.');
         }
 
         $checkpoint = $proof->checkpoint;
+
         if (!hash_equals($proof->rootHash, $checkpoint->rootHash()) || $checkpoint->treeSize() !== $proof->treeSize) {
             throw new VerificationFailedException('Checkpoint does not match the inclusion proof.');
         }
 
         foreach ($checkpoint->signatures() as $signature) {
-            if (Ecdsa::verifyDer($checkpoint->signedBody(), $signature, $log->publicKeyPem)) {
+            $valid = Ecdsa::verifyDer(
+                message: $checkpoint->signedBody(),
+                derSignature: $signature,
+                publicKeyPem: $log->publicKeyPem,
+            );
+
+            if ($valid) {
                 return;
             }
         }
@@ -101,21 +122,22 @@ final class RekorVerifier
     }
 
     /**
-     * Bind the log entry to this bundle: the payload hash recorded in the Rekor
-     * entry body must equal the SHA-256 of the DSSE envelope payload.
+     * Bind the log entry to this bundle: the hash recorded in the Rekor entry
+     * body must equal the expected hex digest the caller derived from the
+     * bundle content (the DSSE payload, or the signed artifact).
      */
-    private function verifyPayloadBinding(TlogEntry $entry, string $envelopePayload): void
+    private function verifyPayloadBinding(TlogEntry $entry, string $expectedHashHex): void
     {
-        $recorded = $this->bodyPayloadHash($entry);
-        $expected = hash('sha256', $envelopePayload);
-        if (!hash_equals($expected, strtolower($recorded))) {
+        $recorded = $this->bodyHash($entry);
+
+        if (!hash_equals(strtolower($expectedHashHex), strtolower($recorded))) {
             throw new VerificationFailedException(
-                'Transparency log entry payload hash does not match the bundle envelope.'
+                'Transparency log entry hash does not match the bundle content.'
             );
         }
     }
 
-    private function bodyPayloadHash(TlogEntry $entry): string
+    private function bodyHash(TlogEntry $entry): string
     {
         try {
             /** @var mixed $body */
@@ -123,6 +145,7 @@ final class RekorVerifier
         } catch (\JsonException $e) {
             throw new VerificationFailedException('Rekor entry body is not valid JSON.', previous: $e);
         }
+
         if (!is_array($body)) {
             throw new VerificationFailedException('Rekor entry body is not a JSON object.');
         }
@@ -130,14 +153,16 @@ final class RekorVerifier
         $hash = match ($entry->kind) {
             'intoto' => self::dig($body, 'spec', 'content', 'payloadHash', 'value'),
             'dsse' => self::dig($body, 'spec', 'payloadHash', 'value'),
+            'hashedrekord' => self::dig($body, 'spec', 'data', 'hash', 'value'),
             default => throw new UnsupportedBundleException(
                 sprintf('Unsupported Rekor entry kind "%s"; cannot bind it to the bundle.', $entry->kind),
             ),
         };
 
         if (!is_string($hash) || $hash === '') {
-            throw new VerificationFailedException('Rekor entry body has no payload hash to bind.');
+            throw new VerificationFailedException('Rekor entry body has no hash to bind.');
         }
+
         return $hash;
     }
 
@@ -150,6 +175,7 @@ final class RekorVerifier
             }
             $value = $value[$key];
         }
+
         return $value;
     }
 }

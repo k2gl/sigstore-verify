@@ -17,5 +17,6 @@ return (new PhpCsFixer\Config())
         'no_unused_imports' => true,
         'single_quote' => true,
         'trailing_comma_in_multiline' => true,
+        'blank_line_before_statement' => ['statements' => ['return', 'for', 'foreach', 'if']],
     ])
     ->setFinder($finder);

@@ -2,23 +2,25 @@
 
 Offline, **fail-closed** PHP verifier for [Sigstore](https://www.sigstore.dev/) bundles.
 Given a `.sigstore.json` bundle, a trusted root, and the identity you expect, it verifies
-the whole chain of evidence and returns the authenticated attestation — or throws.
+the whole chain of evidence and returns the authenticated content — or throws.
 
-It answers the question *"is this attestation genuine, and did the identity I trust
-produce it?"* in pure PHP, with no network calls during verification.
+It handles both bundle shapes: **DSSE attestations** (`cosign attest`, npm provenance,
+SLSA provenance) and **message signatures** (`cosign sign-blob` artifact signatures). It
+answers *"is this genuine, and did the identity I trust produce it?"* in pure PHP, with no
+network calls during verification.
 
 ## What it verifies
 
-For a DSSE-attestation bundle (the kind produced by `cosign attest`, npm provenance,
-`gitsign`, …), every one of these must pass or verification throws:
+Every one of these must pass or verification throws:
 
 1. **Certificate chain** — the Fulcio leaf certificate chains to a trusted CA from the
    supplied trusted root, and every certificate in the path is valid at the signing time
    (the Rekor integrated time).
-2. **DSSE signature** — the envelope signature verifies under the leaf certificate's key.
+2. **Signature** — the DSSE envelope signature, or the artifact's message signature,
+   verifies under the leaf certificate's key.
 3. **Transparency log** — each Rekor entry is proven by its signed entry timestamp and/or
    its Merkle inclusion proof (recomputed per RFC 6962, against a signed checkpoint), and
-   the entry is bound to this envelope by its payload hash.
+   the entry is bound to this bundle by its recorded hash.
 4. **Identity policy** — the certificate's subject alternative name and OIDC issuer match
    what you require.
 
@@ -110,13 +112,37 @@ For the still-common Statement v0.1, decode the payload directly
 (`json_decode($envelope->payload, true)`) — the structure (`subject`, `predicateType`,
 `predicate`) is identical, only `_type` differs.
 
+### Verifying an artifact (message signature)
+
+For a `cosign sign-blob`-style bundle, supply the artifact bytes; `verifyArtifact()`
+checks the digest, the signature and the Rekor entry, and returns nothing (it throws
+unless every step passes):
+
+```php
+use K2gl\Sigstore\Bundle;
+use K2gl\Sigstore\TrustedRoot;
+use K2gl\Sigstore\IdentityPolicy;
+use K2gl\Sigstore\SigstoreVerifier;
+
+(new SigstoreVerifier())->verifyArtifact(
+    bundle: Bundle::fromJson($bundleJson),
+    artifact: file_get_contents('artifact.bin'),
+    trustedRoot: TrustedRoot::fromJson($trustedRootJson),
+    identityPolicy: $policy,
+);
+// reached here => the artifact was signed by the expected identity
+```
+
+`verifyArtifactFromJson()` is the JSON-string shorthand. Use `Bundle::isDsse()` /
+`Bundle::isMessageSignature()` to pick the right method for an unknown bundle.
+
 ## Scope
 
-This release verifies **DSSE in-toto attestation bundles** signed by a keyless **Fulcio
-ECDSA P-256** certificate, offline. The following are intentionally out of scope and are
-rejected with `UnsupportedBundleException` rather than skipped:
+This release verifies, offline, both **DSSE in-toto attestation** bundles and
+**message-signature** (artifact) bundles, signed by a keyless **Fulcio ECDSA P-256**
+certificate. The following are intentionally out of scope and are rejected with
+`UnsupportedBundleException` rather than skipped:
 
-- message-signature (artifact-signature / hashedrekord) bundles;
 - public-key (non-certificate) bundles and non-P-256 keys;
 - RFC 3161 timestamps and SCT / certificate-transparency verification;
 - TUF-based trust-root fetching and auto-refresh.

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0
+
+Message-signature (artifact) bundle support, alongside DSSE attestations.
+
+- **`SigstoreVerifier::verifyArtifact()`** (and `verifyArtifactFromJson()`) — verifies a
+  `cosign sign-blob`-style bundle against the artifact bytes you supply: the message digest
+  matches the artifact, the signature verifies under the Fulcio leaf key, the hashedrekord
+  Rekor entry is proven and bound to the artifact digest, and the certificate identity
+  matches. Throws unless every step passes.
+- **`Bundle`** now parses both DSSE and message-signature content, with `isDsse()` /
+  `isMessageSignature()`. New **`MessageSignature`** value object.
+- Validated end to end against the public-good sigstore-conformance message-signature
+  fixture (certificate chain, artifact signature, Rekor inclusion proof + signed checkpoint,
+  hashedrekord binding, identity).
+
+Note: `Bundle::$dsseEnvelope` is now nullable (null for message-signature bundles); use
+`isDsse()` before reading it. `verify()` is for DSSE bundles and `verifyArtifact()` for
+message-signature bundles — each rejects the other shape as unsupported.
+
 ## 0.1.1
 
 - **`SigstoreVerifier::verifyFromJson()`** — convenience entry point that parses a bundle

@@ -23,6 +23,7 @@ final class CertificateKeyVerifier implements Verifier
     public function __construct(string $publicKeyPem)
     {
         $key = openssl_pkey_get_public($publicKeyPem);
+
         if ($key === false) {
             throw new VerificationFailedException('Unable to load the certificate public key.');
         }

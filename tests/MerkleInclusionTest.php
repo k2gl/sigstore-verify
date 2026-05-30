@@ -30,6 +30,7 @@ final class MerkleInclusionTest extends TestCase
         $proof = $entry['inclusionProof'];
 
         $hashes = [];
+
         foreach ($proof['hashes'] as $hash) {
             $hashes[] = self::b64($hash);
         }
@@ -47,32 +48,54 @@ final class MerkleInclusionTest extends TestCase
     {
         $decoded = base64_decode($value, true);
         self::assertIsString($decoded);
+
         return $decoded;
     }
 
     public function testRecomputesRealRekorRoot(): void
     {
         $p = $this->realProof();
-        $root = MerkleInclusion::computeRoot($p['index'], $p['size'], $p['leafHash'], $p['proof']);
+        $root = MerkleInclusion::computeRoot(
+            leafIndex: $p['index'],
+            treeSize: $p['size'],
+            leafHash: $p['leafHash'],
+            proof: $p['proof'],
+        );
         fact($root === $p['root'])->true();
     }
 
     public function testSingleLeafTreeRootIsLeafHash(): void
     {
         $leaf = MerkleInclusion::leafHash('only-entry');
-        fact(MerkleInclusion::computeRoot(0, 1, $leaf, []) === $leaf)->true();
+        $root = MerkleInclusion::computeRoot(
+            leafIndex: 0,
+            treeSize: 1,
+            leafHash: $leaf,
+            proof: [],
+        );
+        fact($root === $leaf)->true();
     }
 
     public function testRejectsIndexOutOfRange(): void
     {
         $this->expectException(VerificationFailedException::class);
-        MerkleInclusion::computeRoot(5, 5, str_repeat("\x00", 32), []);
+        MerkleInclusion::computeRoot(
+            leafIndex: 5,
+            treeSize: 5,
+            leafHash: str_repeat("\x00", 32),
+            proof: [],
+        );
     }
 
     public function testRejectsWrongProofLength(): void
     {
         $p = $this->realProof();
         $this->expectException(VerificationFailedException::class);
-        MerkleInclusion::computeRoot($p['index'], $p['size'], $p['leafHash'], array_slice($p['proof'], 1));
+        MerkleInclusion::computeRoot(
+            leafIndex: $p['index'],
+            treeSize: $p['size'],
+            leafHash: $p['leafHash'],
+            proof: array_slice($p['proof'], 1),
+        );
     }
 }

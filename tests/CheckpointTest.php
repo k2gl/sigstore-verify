@@ -27,6 +27,7 @@ final class CheckpointTest extends TestCase
         self::assertIsArray($bundle);
         $envelope = $bundle['verificationMaterial']['tlogEntries'][0]['inclusionProof']['checkpoint']['envelope'];
         self::assertIsString($envelope);
+
         return new Checkpoint($envelope);
     }
 

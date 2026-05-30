@@ -28,27 +28,35 @@ final class MerkleInclusion
      * @param  list<string> $proof raw sibling hashes, bottom to top
      * @throws VerificationFailedException
      */
-    public static function computeRoot(int $leafIndex, int $treeSize, string $leafHash, array $proof): string
-    {
+    public static function computeRoot(
+        int $leafIndex,
+        int $treeSize,
+        string $leafHash,
+        array $proof,
+    ): string {
         if ($leafIndex < 0 || $treeSize <= 0 || $leafIndex >= $treeSize) {
             throw new VerificationFailedException('Inclusion proof leaf index is out of range for the tree size.');
         }
 
         $inner = self::bitLength($leafIndex ^ ($treeSize - 1));
         $border = self::onesCount($leafIndex >> $inner);
+
         if (count($proof) !== $inner + $border) {
             throw new VerificationFailedException('Inclusion proof has an unexpected number of hashes.');
         }
 
         $seed = $leafHash;
+
         for ($i = 0; $i < $inner; $i++) {
             $sibling = $proof[$i];
+
             if ((($leafIndex >> $i) & 1) === 0) {
                 $seed = self::hashChildren($seed, $sibling);
             } else {
                 $seed = self::hashChildren($sibling, $seed);
             }
         }
+
         for ($i = $inner, $n = count($proof); $i < $n; $i++) {
             $seed = self::hashChildren($proof[$i], $seed);
         }
@@ -68,6 +76,7 @@ final class MerkleInclusion
             $bits++;
             $value >>= 1;
         }
+
         return $bits;
     }
 
@@ -78,6 +87,7 @@ final class MerkleInclusion
             $count += $value & 1;
             $value >>= 1;
         }
+
         return $count;
     }
 }

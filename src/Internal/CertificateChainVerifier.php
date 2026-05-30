@@ -21,10 +21,13 @@ use K2gl\Sigstore\TrustedRoot;
 final class CertificateChainVerifier
 {
     /** @throws VerificationFailedException */
-    public function verify(Certificate $leaf, TrustedRoot $trustedRoot, \DateTimeImmutable $signingTime): void
-    {
+    public function verify(
+        Certificate $leaf,
+        TrustedRoot $trustedRoot,
+        \DateTimeImmutable $signingTime,
+    ): void {
         foreach ($trustedRoot->certificateAuthorities as $authority) {
-            if ($this->chains($leaf, $authority, $signingTime)) {
+            if ($this->chains(leaf: $leaf, authority: $authority, signingTime: $signingTime)) {
                 return;
             }
         }
@@ -33,14 +36,18 @@ final class CertificateChainVerifier
         );
     }
 
-    private function chains(Certificate $leaf, CertificateAuthority $authority, \DateTimeImmutable $signingTime): bool
-    {
+    private function chains(
+        Certificate $leaf,
+        CertificateAuthority $authority,
+        \DateTimeImmutable $signingTime,
+    ): bool {
         if (!$authority->isValidAt($signingTime)) {
             return false;
         }
 
         $path = array_merge([$leaf], $authority->certificates());
         $last = count($path) - 1;
+
         if ($last < 1) {
             return false;
         }
@@ -49,6 +56,7 @@ final class CertificateChainVerifier
             if (!$path[$i]->isValidAt($signingTime)) {
                 return false;
             }
+
             if (!$path[$i]->isSignedBy($path[$i + 1])) {
                 return false;
             }

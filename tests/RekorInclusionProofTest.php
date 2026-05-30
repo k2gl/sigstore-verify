@@ -56,7 +56,7 @@ final class RekorInclusionProofTest extends TestCase
 
         $this->logId = random_bytes(32);
         $this->trustedRoot = new TrustedRoot(
-            [new CertificateAuthority([], null, null)],
+            [new CertificateAuthority(certChainDer: [], validForStart: null, validForEnd: null)],
             [new TransparencyLogInstance($this->logId, $publicKeyPem)],
         );
 
@@ -90,14 +90,24 @@ final class RekorInclusionProofTest extends TestCase
             kind: 'intoto',
             integratedTime: 1700000000,
             signedEntryTimestamp: null,
-            inclusionProof: new InclusionProof(0, 1, $rootHash, [], $this->checkpoint($rootHash)),
+            inclusionProof: new InclusionProof(
+                logIndex: 0,
+                treeSize: 1,
+                rootHash: $rootHash,
+                hashes: [],
+                checkpoint: $this->checkpoint($rootHash),
+            ),
             canonicalizedBody: $body ?? $this->canonicalBody,
         );
     }
 
     public function testVerifiesInclusionProofPath(): void
     {
-        (new RekorVerifier())->verify($this->entry($this->rootHash), $this->trustedRoot, self::PAYLOAD);
+        (new RekorVerifier())->verify(
+            entry: $this->entry($this->rootHash),
+            trustedRoot: $this->trustedRoot,
+            expectedHashHex: hash('sha256', self::PAYLOAD),
+        );
         $this->addToAssertionCount(1);
     }
 
@@ -105,13 +115,21 @@ final class RekorInclusionProofTest extends TestCase
     {
         $wrongRoot = strrev($this->rootHash);
         $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier())->verify($this->entry($wrongRoot), $this->trustedRoot, self::PAYLOAD);
+        (new RekorVerifier())->verify(
+            entry: $this->entry($wrongRoot),
+            trustedRoot: $this->trustedRoot,
+            expectedHashHex: hash('sha256', self::PAYLOAD),
+        );
     }
 
     public function testRejectsPayloadBindingMismatch(): void
     {
         $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier())->verify($this->entry($this->rootHash), $this->trustedRoot, 'a-different-payload');
+        (new RekorVerifier())->verify(
+            entry: $this->entry($this->rootHash),
+            trustedRoot: $this->trustedRoot,
+            expectedHashHex: hash('sha256', 'a-different-payload'),
+        );
     }
 
     public function testRejectsCheckpointSignedByAnotherKey(): void
@@ -122,11 +140,15 @@ final class RekorInclusionProofTest extends TestCase
         $details = openssl_pkey_get_details($other);
         self::assertIsArray($details);
         $foreignRoot = new TrustedRoot(
-            [new CertificateAuthority([], null, null)],
+            [new CertificateAuthority(certChainDer: [], validForStart: null, validForEnd: null)],
             [new TransparencyLogInstance($this->logId, $details['key'])],
         );
 
         $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier())->verify($this->entry($this->rootHash), $foreignRoot, self::PAYLOAD);
+        (new RekorVerifier())->verify(
+            entry: $this->entry($this->rootHash),
+            trustedRoot: $foreignRoot,
+            expectedHashHex: hash('sha256', self::PAYLOAD),
+        );
     }
 }

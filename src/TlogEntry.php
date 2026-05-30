@@ -33,25 +33,27 @@ final class TlogEntry
 
         $signedEntryTimestamp = null;
         $promise = $data['inclusionPromise'] ?? null;
+
         if (is_array($promise) && isset($promise['signedEntryTimestamp'])) {
             $signedEntryTimestamp = Json::base64($promise, 'signedEntryTimestamp');
         }
 
         $inclusionProof = null;
         $proof = $data['inclusionProof'] ?? null;
+
         if (is_array($proof) && isset($proof['logIndex'], $proof['rootHash'], $proof['checkpoint'])) {
             /** @var array<string, mixed> $proof */
             $inclusionProof = InclusionProof::fromArray($proof);
         }
 
         return new self(
-            Json::int($data, 'logIndex'),
-            $logId,
-            Json::string($kindVersion, 'kind'),
-            Json::int($data, 'integratedTime'),
-            $signedEntryTimestamp,
-            $inclusionProof,
-            Json::base64($data, 'canonicalizedBody'),
+            logIndex: Json::int($data, 'logIndex'),
+            logId: $logId,
+            kind: Json::string($kindVersion, 'kind'),
+            integratedTime: Json::int($data, 'integratedTime'),
+            signedEntryTimestamp: $signedEntryTimestamp,
+            inclusionProof: $inclusionProof,
+            canonicalizedBody: Json::base64($data, 'canonicalizedBody'),
         );
     }
 }

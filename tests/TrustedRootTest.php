@@ -25,6 +25,7 @@ final class TrustedRootTest extends TestCase
     {
         $raw = file_get_contents(__DIR__ . '/fixtures/trusted-root-public-good.json');
         self::assertIsString($raw);
+
         return TrustedRoot::fromJson($raw);
     }
 

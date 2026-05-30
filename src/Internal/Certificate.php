@@ -34,9 +34,11 @@ final class Certificate
     public static function fromDer(string $der): self
     {
         $x509 = new X509();
+
         if (!is_array($x509->loadX509($der))) {
             throw new VerificationFailedException('Unable to parse an X.509 certificate.');
         }
+
         return new self($x509, $der);
     }
 
@@ -50,15 +52,18 @@ final class Certificate
     public function isEcdsaP256(): bool
     {
         $key = $this->publicKey();
+
         return $key instanceof EC && $key->getCurve() === 'secp256r1';
     }
 
     private function publicKey(): PublicKey
     {
         $key = $this->x509->getPublicKey();
+
         if (!$key instanceof PublicKey) {
             throw new VerificationFailedException('Certificate has no usable public key.');
         }
+
         return $key;
     }
 
@@ -71,10 +76,12 @@ final class Certificate
     public function isSignedBy(self $issuer): bool
     {
         $subject = new X509();
+
         if (!is_array($subject->loadX509($this->der))) {
             return false;
         }
         $subject->loadCA($issuer->pemCertificate());
+
         return $subject->validateSignature() === true;
     }
 
@@ -92,21 +99,26 @@ final class Certificate
     public function subjectAlternativeNames(): array
     {
         $extension = $this->x509->getExtension('id-ce-subjectAltName');
+
         if (!is_array($extension)) {
             return [];
         }
         $names = [];
+
         foreach ($extension as $entry) {
             if (!is_array($entry)) {
                 continue;
             }
+
             foreach (['uniformResourceIdentifier', 'rfc822Name', 'dNSName'] as $type) {
                 $value = $entry[$type] ?? null;
+
                 if (is_string($value) && $value !== '') {
                     $names[] = $value;
                 }
             }
         }
+
         return $names;
     }
 
@@ -114,6 +126,7 @@ final class Certificate
     public function oidcIssuer(): ?string
     {
         $value = $this->x509->getExtension(self::OID_FULCIO_ISSUER_V1);
+
         return is_string($value) && $value !== '' ? $value : null;
     }
 }

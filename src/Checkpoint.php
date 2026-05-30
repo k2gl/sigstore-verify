@@ -30,6 +30,7 @@ final class Checkpoint
     public function __construct(public readonly string $envelope)
     {
         $separator = strpos($envelope, "\n\n");
+
         if ($separator === false) {
             throw new InvalidBundleException('Checkpoint note has no blank line separating body and signatures.');
         }
@@ -38,21 +39,25 @@ final class Checkpoint
         $this->signedBody = $body . "\n";
 
         $lines = explode("\n", $body);
+
         if (count($lines) < 3) {
             throw new InvalidBundleException('Checkpoint note body must have at least three lines.');
         }
+
         if (preg_match('/^\d+$/', $lines[1]) !== 1) {
             throw new InvalidBundleException('Checkpoint note tree size is not an integer.');
         }
         $this->treeSize = (int) $lines[1];
 
         $rootHash = base64_decode($lines[2], true);
+
         if ($rootHash === false) {
             throw new InvalidBundleException('Checkpoint note root hash is not valid base64.');
         }
         $this->rootHash = $rootHash;
 
         $this->signatures = self::parseSignatures(substr($envelope, $separator + 2));
+
         if ($this->signatures === []) {
             throw new InvalidBundleException('Checkpoint note has no parseable signature.');
         }
@@ -89,20 +94,24 @@ final class Checkpoint
     private static function parseSignatures(string $block): array
     {
         $signatures = [];
+
         foreach (explode("\n", $block) as $line) {
             if ($line === '') {
                 continue;
             }
             $space = strrpos($line, ' ');
+
             if ($space === false) {
                 continue;
             }
             $decoded = base64_decode(substr($line, $space + 1), true);
+
             if ($decoded === false || strlen($decoded) <= 4) {
                 continue;
             }
             $signatures[] = substr($decoded, 4);
         }
+
         return $signatures;
     }
 }

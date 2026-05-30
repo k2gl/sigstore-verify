@@ -13,12 +13,17 @@ namespace K2gl\Sigstore\Internal;
  */
 final class Ecdsa
 {
-    public static function verifyDer(string $message, string $derSignature, string $publicKeyPem): bool
-    {
+    public static function verifyDer(
+        string $message,
+        string $derSignature,
+        string $publicKeyPem,
+    ): bool {
         $key = openssl_pkey_get_public($publicKeyPem);
+
         if ($key === false) {
             return false;
         }
+
         return openssl_verify($message, $derSignature, $key, OPENSSL_ALGO_SHA256) === 1;
     }
 }
