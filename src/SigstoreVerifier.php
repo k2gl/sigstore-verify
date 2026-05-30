@@ -46,6 +46,21 @@ final class SigstoreVerifier
         $this->rekorVerifier = new RekorVerifier();
     }
 
+    /**
+     * Convenience wrapper for the common case of having the bundle and trusted
+     * root as JSON strings. Parsing errors surface as {@see Exception\InvalidBundleException}
+     * / {@see Exception\TrustRootException}, exactly as {@see Bundle::fromJson()}
+     * and {@see TrustedRoot::fromJson()} throw them.
+     */
+    public function verifyFromJson(string $bundleJson, string $trustedRootJson, IdentityPolicy $identityPolicy): Envelope
+    {
+        return $this->verify(
+            Bundle::fromJson($bundleJson),
+            TrustedRoot::fromJson($trustedRootJson),
+            $identityPolicy,
+        );
+    }
+
     public function verify(Bundle $bundle, TrustedRoot $trustedRoot, IdentityPolicy $identityPolicy): Envelope
     {
         // 1. Scope: this version verifies in-toto attestation envelopes.

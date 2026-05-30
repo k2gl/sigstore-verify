@@ -165,4 +165,47 @@ final class SigstoreVerifierTest extends TestCase
         $this->expectException(UnsupportedBundleException::class);
         Bundle::fromJson($this->fixture('bundle_v3.txt.sigstore'));
     }
+
+    public function testVerifyFromJsonAcceptsTheRealBundle(): void
+    {
+        $envelope = (new SigstoreVerifier())->verifyFromJson(
+            $this->fixture('bundle-provenance.json'),
+            $this->fixture('trusted-root-public-good.json'),
+            new IdentityPolicy(self::SAN, self::ISSUER),
+        );
+
+        fact($envelope->payloadType)->is('application/vnd.in-toto+json');
+    }
+
+    public function testRejectsTamperedSignedEntryTimestamp(): void
+    {
+        $raw = json_decode($this->fixture('bundle-provenance.json'), true);
+        self::assertIsArray($raw);
+
+        $set = base64_decode((string) $raw['verificationMaterial']['tlogEntries'][0]['inclusionPromise']['signedEntryTimestamp'], true);
+        self::assertIsString($set);
+        $set[10] = $set[10] === "\x00" ? "\x01" : "\x00"; // flip a byte inside the signature
+        $raw['verificationMaterial']['tlogEntries'][0]['inclusionPromise']['signedEntryTimestamp'] = base64_encode($set);
+
+        $this->expectException(VerificationFailedException::class);
+        (new SigstoreVerifier())->verify(
+            Bundle::fromArray($raw),
+            $this->trustedRoot(),
+            new IdentityPolicy(self::SAN, self::ISSUER),
+        );
+    }
+
+    public function testRejectsNonInTotoPayloadTypeAsUnsupported(): void
+    {
+        $raw = json_decode($this->fixture('bundle-provenance.json'), true);
+        self::assertIsArray($raw);
+        $raw['dsseEnvelope']['payloadType'] = 'application/vnd.dev.cosign.simplesigning.v1+json';
+
+        $this->expectException(UnsupportedBundleException::class);
+        (new SigstoreVerifier())->verify(
+            Bundle::fromArray($raw),
+            $this->trustedRoot(),
+            new IdentityPolicy(self::SAN, self::ISSUER),
+        );
+    }
 }

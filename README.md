@@ -82,10 +82,33 @@ $statement['predicateType']; // e.g. 'https://slsa.dev/provenance/v1'
 $statement['subject'];       // the attested artifacts
 ```
 
+If you already hold the bundle and trusted root as JSON strings, `verifyFromJson()` is the
+one-line shorthand:
+
+```php
+$envelope = (new SigstoreVerifier())->verifyFromJson($bundleJson, $trustedRootJson, $policy);
+```
+
 Sigstore bundles carry in-toto Statement **v0.1** and **v1**; authentication does not depend
 on the schema version, so the verifier hands back the envelope and leaves statement modelling
-to you. For v1 statements you can parse with `K2gl\InToto\Statement::fromEnvelope($envelope)`,
-and SLSA provenance with `K2gl\Slsa\Provenance::fromStatement(...)`.
+to you.
+
+### Reading SLSA provenance (Statement v1)
+
+```php
+use K2gl\InToto\Statement;
+use K2gl\Slsa\Provenance;
+
+$statement  = Statement::fromEnvelope($envelope);   // throws unless it is a v1 Statement
+$provenance = Provenance::fromStatement($statement);
+
+$provenance->buildDefinition->buildType;            // how it was built
+$provenance->runDetails->builder->id;               // who built it
+```
+
+For the still-common Statement v0.1, decode the payload directly
+(`json_decode($envelope->payload, true)`) — the structure (`subject`, `predicateType`,
+`predicate`) is identical, only `_type` differs.
 
 ## Scope
 

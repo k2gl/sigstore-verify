@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1
+
+- **`SigstoreVerifier::verifyFromJson()`** — convenience entry point that parses a bundle
+  and trusted root from JSON strings and verifies them in one call.
+- Hardening tests: a tampered Rekor signed entry timestamp, a non-in-toto payload type and
+  an empty transparency-log list are all rejected.
+- README: `verifyFromJson` shorthand and a worked Statement-v1 / SLSA-provenance example.
+
+No API or behaviour changes to existing methods.
+
 ## 0.1.0
 
 First public release. An offline, fail-closed verifier for Sigstore DSSE-attestation

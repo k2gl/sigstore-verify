@@ -82,4 +82,17 @@ final class BundleTest extends TestCase
         $this->expectException(InvalidBundleException::class);
         Bundle::fromArray(['mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json']);
     }
+
+    public function testRejectsEmptyTlogEntries(): void
+    {
+        $this->expectException(InvalidBundleException::class);
+        Bundle::fromArray([
+            'mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json',
+            'verificationMaterial' => [
+                'certificate' => ['rawBytes' => base64_encode('der')],
+                'tlogEntries' => [],
+            ],
+            'dsseEnvelope' => $this->minimalDsseEnvelope(),
+        ]);
+    }
 }
