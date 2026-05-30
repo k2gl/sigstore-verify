@@ -1,0 +1,55 @@
+{
+  "name": "k2gl/sigstore-verify",
+  "description": "Offline, fail-closed PHP verifier for Sigstore bundles: certificate chain to a Fulcio root, DSSE signature, Rekor transparency-log proof and identity policy, returning a verified in-toto Statement.",
+  "homepage": "https://github.com/k2gl/sigstore-verify",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "sigstore",
+    "rekor",
+    "fulcio",
+    "transparency-log",
+    "bundle",
+    "in-toto",
+    "attestation",
+    "slsa",
+    "dsse",
+    "supply-chain"
+  ],
+  "authors": [
+    {
+      "name": "Nickolay Harin",
+      "email": "l0gic@ya.ru"
+    }
+  ],
+  "require": {
+    "php": ">=8.1",
+    "ext-json": "*",
+    "ext-openssl": "*",
+    "k2gl/in-toto-attestation": "^1.0",
+    "phpseclib/phpseclib": "^3.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10|^11|^12",
+    "phpstan/phpstan": "^2.1",
+    "friendsofphp/php-cs-fixer": "^3.64",
+    "k2gl/phpunit-fluent-assertions": "^12"
+  },
+  "autoload": {
+    "psr-4": {
+      "K2gl\\Sigstore\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "K2gl\\Sigstore\\Tests\\": "tests/"
+    }
+  },
+  "minimum-stability": "stable",
+  "scripts": {
+    "test": "phpunit",
+    "phpstan": "phpstan analyse",
+    "cs": "php-cs-fixer fix --dry-run --diff",
+    "cs-fix": "php-cs-fixer fix"
+  }
+}
