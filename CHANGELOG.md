@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.0
+
+RFC 3161 timestamp verification.
+
+- **RFC 3161 timestamps** — when a bundle carries one or more
+  `verificationMaterial.timestampVerificationData.rfc3161Timestamps`, each is now verified
+  (fail-closed) against the trusted root's timestamp authorities: the CMS SignedData
+  signature under a trusted Timestamp Authority certificate whose chain is valid at the
+  token's genTime, the message-digest signed attribute, and the message imprint over the
+  bundle's signature. A verified timestamp's genTime becomes the signing time for the
+  certificate-chain check; with no timestamp, the Rekor integrated time is used, as before.
+- New **`Rfc3161Timestamp`** value object. **`TrustedRoot`** now parses `timestampAuthorities`
+  (exposed as `TrustedRoot::$timestampAuthorities`) and **`Bundle`** exposes
+  `Bundle::$rfc3161Timestamps`.
+- Validated against a real time-stamp token from the sigstore conformance suite, plus
+  rejection tests for a tampered token, a timestamp over a different signature, an untrusted
+  authority and a genTime outside the authority's validity.
+
+No API changes to `verify()` / `verifyArtifact()`: timestamps are verified automatically
+when present, and bundles without them behave exactly as before.
+
 ## 0.2.0
 
 Message-signature (artifact) bundle support, alongside DSSE attestations.

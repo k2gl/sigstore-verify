@@ -9,8 +9,8 @@ use K2gl\Sigstore\Internal\TrustRootJson;
 
 /**
  * The set of trust anchors a verification runs against, parsed from a Sigstore
- * trusted_root.json: the Fulcio certificate authorities and the Rekor
- * transparency logs.
+ * trusted_root.json: the Fulcio certificate authorities, the Rekor transparency
+ * logs, and any RFC 3161 timestamp authorities.
  *
  * This package does not fetch or update trust material. The caller supplies a
  * trusted_root.json — obtained from the Sigstore TUF root or via
@@ -23,10 +23,12 @@ final class TrustedRoot
     /**
      * @param list<CertificateAuthority>     $certificateAuthorities
      * @param list<TransparencyLogInstance>  $transparencyLogs
+     * @param list<CertificateAuthority>     $timestampAuthorities    RFC 3161 timestamp authorities, if any
      */
     public function __construct(
         public readonly array $certificateAuthorities,
         public readonly array $transparencyLogs,
+        public readonly array $timestampAuthorities = [],
     ) {
         if ($certificateAuthorities === []) {
             throw new TrustRootException('Trusted root has no certificate authorities.');
@@ -61,7 +63,34 @@ final class TrustedRoot
             $logs[] = TransparencyLogInstance::fromArray($entry);
         }
 
-        return new self($authorities, $logs);
+        return new self($authorities, $logs, self::timestampAuthorities($data));
+    }
+
+    /**
+     * Timestamp authorities are optional: a trusted root without them simply
+     * cannot anchor RFC 3161 timestamps.
+     *
+     * @param  array<string, mixed>      $data
+     * @return list<CertificateAuthority>
+     */
+    private static function timestampAuthorities(array $data): array
+    {
+        $raw = $data['timestampAuthorities'] ?? $data['timestamp_authorities'] ?? null;
+
+        if (!is_array($raw) || !array_is_list($raw)) {
+            return [];
+        }
+        $authorities = [];
+
+        foreach ($raw as $entry) {
+            if (!is_array($entry)) {
+                throw new TrustRootException('Timestamp authority entry must be an object.');
+            }
+            /** @var array<string, mixed> $entry */
+            $authorities[] = CertificateAuthority::fromArray($entry);
+        }
+
+        return $authorities;
     }
 
     /** Find the transparency log whose log id matches the given raw bytes. */

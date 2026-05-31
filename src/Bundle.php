@@ -25,13 +25,17 @@ final class Bundle
 {
     private const MEDIA_TYPE_PREFIX = 'application/vnd.dev.sigstore.bundle';
 
-    /** @param list<TlogEntry> $tlogEntries */
+    /**
+     * @param list<TlogEntry>        $tlogEntries
+     * @param list<Rfc3161Timestamp> $rfc3161Timestamps
+     */
     public function __construct(
         public readonly string $mediaType,
         public readonly string $leafCertificate,
         public readonly array $tlogEntries,
         public readonly ?Envelope $dsseEnvelope = null,
         public readonly ?MessageSignature $messageSignature = null,
+        public readonly array $rfc3161Timestamps = [],
     ) {
     }
 
@@ -62,6 +66,7 @@ final class Bundle
         $material = Json::object($data, 'verificationMaterial');
         $leaf = self::leafCertificate($material);
         $tlogEntries = self::tlogEntries($material);
+        $timestamps = self::rfc3161Timestamps($material);
 
         if (isset($data['dsseEnvelope'])) {
             return new self(
@@ -69,6 +74,7 @@ final class Bundle
                 leafCertificate: $leaf,
                 tlogEntries: $tlogEntries,
                 dsseEnvelope: self::dsseEnvelope(Json::object($data, 'dsseEnvelope')),
+                rfc3161Timestamps: $timestamps,
             );
         }
 
@@ -78,6 +84,7 @@ final class Bundle
                 leafCertificate: $leaf,
                 tlogEntries: $tlogEntries,
                 messageSignature: MessageSignature::fromArray(Json::object($data, 'messageSignature')),
+                rfc3161Timestamps: $timestamps,
             );
         }
 
@@ -131,6 +138,35 @@ final class Bundle
         }
 
         return $entries;
+    }
+
+    /**
+     * @param  array<string, mixed>  $material
+     * @return list<Rfc3161Timestamp>
+     */
+    private static function rfc3161Timestamps(array $material): array
+    {
+        $data = $material['timestampVerificationData'] ?? null;
+
+        if (!is_array($data)) {
+            return [];
+        }
+        $raw = $data['rfc3161Timestamps'] ?? null;
+
+        if (!is_array($raw) || !array_is_list($raw)) {
+            return [];
+        }
+        $timestamps = [];
+
+        foreach ($raw as $entry) {
+            if (!is_array($entry)) {
+                throw new InvalidBundleException('Each RFC 3161 timestamp must be a JSON object.');
+            }
+            /** @var array<string, mixed> $entry */
+            $timestamps[] = Rfc3161Timestamp::fromArray($entry);
+        }
+
+        return $timestamps;
     }
 
     /** @param array<string, mixed> $dsse */

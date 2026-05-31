@@ -14,14 +14,17 @@ network calls during verification.
 Every one of these must pass or verification throws:
 
 1. **Certificate chain** — the Fulcio leaf certificate chains to a trusted CA from the
-   supplied trusted root, and every certificate in the path is valid at the signing time
-   (the Rekor integrated time).
+   supplied trusted root, and every certificate in the path is valid at the signing time.
 2. **Signature** — the DSSE envelope signature, or the artifact's message signature,
    verifies under the leaf certificate's key.
 3. **Transparency log** — each Rekor entry is proven by its signed entry timestamp and/or
    its Merkle inclusion proof (recomputed per RFC 6962, against a signed checkpoint), and
    the entry is bound to this bundle by its recorded hash.
-4. **Identity policy** — the certificate's subject alternative name and OIDC issuer match
+4. **Timestamp** — when the bundle carries an RFC 3161 timestamp, the token must verify
+   against a trusted Timestamp Authority from the trusted root (the token signature, its
+   certificate chain valid at that time, and the imprint of the bundle signature), and its
+   genTime becomes the signing time. With no timestamp, the Rekor integrated time stands in.
+5. **Identity policy** — the certificate's subject alternative name and OIDC issuer match
    what you require.
 
 There is no "best effort" path: anything missing, unsupported, or invalid raises a
@@ -140,11 +143,12 @@ use K2gl\Sigstore\SigstoreVerifier;
 
 This release verifies, offline, both **DSSE in-toto attestation** bundles and
 **message-signature** (artifact) bundles, signed by a keyless **Fulcio ECDSA P-256**
-certificate. The following are intentionally out of scope and are rejected with
+certificate, and verifies any **RFC 3161 timestamp** the bundle carries against a trusted
+Timestamp Authority. The following are intentionally out of scope and are rejected with
 `UnsupportedBundleException` rather than skipped:
 
 - public-key (non-certificate) bundles and non-P-256 keys;
-- RFC 3161 timestamps and SCT / certificate-transparency verification;
+- SCT / certificate-transparency verification;
 - TUF-based trust-root fetching and auto-refresh.
 
 These are the planned next steps — each a fail-closed addition in a later release.

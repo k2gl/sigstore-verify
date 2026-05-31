@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Internal;
 
-use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\TrustedRoot;
 
 /**
- * Verifies that a leaf certificate chains to a trusted Fulcio CA at the signing
- * time. For each trusted CA it builds the explicit path leaf -> intermediate(s)
- * -> root, checks every signature link and every validity window against the
+ * Verifies that a leaf certificate chains to a trusted CA at the signing time.
+ * For each trusted CA it builds the explicit path leaf -> intermediate(s) ->
+ * root, checks every signature link and every validity window against the
  * signing time, and requires the anchor to be self-signed. The bundle's own
  * intermediate certificates are deliberately ignored: only certificates from
  * the supplied trusted root are trusted.
+ *
+ * The same chain check serves both Fulcio certificate authorities and timestamp
+ * authorities, whose trusted root entries share the same shape.
  *
  * @internal
  */
@@ -27,7 +29,9 @@ final class CertificateChainVerifier
         \DateTimeImmutable $signingTime,
     ): void {
         foreach ($trustedRoot->certificateAuthorities as $authority) {
-            if ($this->chains(leaf: $leaf, authority: $authority, signingTime: $signingTime)) {
+            if ($authority->isValidAt($signingTime)
+                && $this->isValidChain(array_merge([$leaf], $authority->certificates()), $signingTime)
+            ) {
                 return;
             }
         }
@@ -36,33 +40,32 @@ final class CertificateChainVerifier
         );
     }
 
-    private function chains(
-        Certificate $leaf,
-        CertificateAuthority $authority,
-        \DateTimeImmutable $signingTime,
-    ): bool {
-        if (!$authority->isValidAt($signingTime)) {
-            return false;
-        }
-
-        $path = array_merge([$leaf], $authority->certificates());
-        $last = count($path) - 1;
+    /**
+     * True if the ordered chain (leaf-most first, self-signed anchor last) holds
+     * at the given time: each certificate is valid then and signed by the next,
+     * and the anchor is self-signed.
+     *
+     * @param list<Certificate> $chain
+     */
+    public function isValidChain(array $chain, \DateTimeImmutable $signingTime): bool
+    {
+        $last = count($chain) - 1;
 
         if ($last < 1) {
             return false;
         }
 
         for ($i = 0; $i < $last; $i++) {
-            if (!$path[$i]->isValidAt($signingTime)) {
+            if (!$chain[$i]->isValidAt($signingTime)) {
                 return false;
             }
 
-            if (!$path[$i]->isSignedBy($path[$i + 1])) {
+            if (!$chain[$i]->isSignedBy($chain[$i + 1])) {
                 return false;
             }
         }
 
-        $anchor = $path[$last];
+        $anchor = $chain[$last];
 
         return $anchor->isValidAt($signingTime) && $anchor->isSignedBy($anchor);
     }
