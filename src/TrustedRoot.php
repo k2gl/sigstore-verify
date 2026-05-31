@@ -24,11 +24,13 @@ final class TrustedRoot
      * @param list<CertificateAuthority>     $certificateAuthorities
      * @param list<TransparencyLogInstance>  $transparencyLogs
      * @param list<CertificateAuthority>     $timestampAuthorities    RFC 3161 timestamp authorities, if any
+     * @param list<TransparencyLogInstance>  $ctLogs                  Certificate Transparency logs, if any
      */
     public function __construct(
         public readonly array $certificateAuthorities,
         public readonly array $transparencyLogs,
         public readonly array $timestampAuthorities = [],
+        public readonly array $ctLogs = [],
     ) {
         if ($certificateAuthorities === []) {
             throw new TrustRootException('Trusted root has no certificate authorities.');
@@ -63,7 +65,34 @@ final class TrustedRoot
             $logs[] = TransparencyLogInstance::fromArray($entry);
         }
 
-        return new self($authorities, $logs, self::timestampAuthorities($data));
+        return new self($authorities, $logs, self::timestampAuthorities($data), self::ctLogs($data));
+    }
+
+    /**
+     * Certificate Transparency logs are optional: a trusted root without them
+     * simply cannot anchor a certificate's embedded SCTs.
+     *
+     * @param  array<string, mixed>         $data
+     * @return list<TransparencyLogInstance>
+     */
+    private static function ctLogs(array $data): array
+    {
+        $raw = $data['ctlogs'] ?? $data['ctLogs'] ?? $data['ct_logs'] ?? null;
+
+        if (!is_array($raw) || !array_is_list($raw)) {
+            return [];
+        }
+        $logs = [];
+
+        foreach ($raw as $entry) {
+            if (!is_array($entry)) {
+                throw new TrustRootException('Certificate transparency log entry must be an object.');
+            }
+            /** @var array<string, mixed> $entry */
+            $logs[] = TransparencyLogInstance::fromArray($entry);
+        }
+
+        return $logs;
     }
 
     /**
@@ -97,6 +126,18 @@ final class TrustedRoot
     public function findTransparencyLog(string $logId): ?TransparencyLogInstance
     {
         foreach ($this->transparencyLogs as $log) {
+            if (hash_equals($log->logId, $logId)) {
+                return $log;
+            }
+        }
+
+        return null;
+    }
+
+    /** Find the Certificate Transparency log whose log id matches the given raw bytes. */
+    public function findCtLog(string $logId): ?TransparencyLogInstance
+    {
+        foreach ($this->ctLogs as $log) {
             if (hash_equals($log->logId, $logId)) {
                 return $log;
             }

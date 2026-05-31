@@ -24,7 +24,11 @@ Every one of these must pass or verification throws:
    against a trusted Timestamp Authority from the trusted root (the token signature, its
    certificate chain valid at that time, and the imprint of the bundle signature), and its
    genTime becomes the signing time. With no timestamp, the Rekor integrated time stands in.
-5. **Identity policy** — the certificate's subject alternative name and OIDC issuer match
+5. **Certificate transparency** — when the trusted root provides CT logs, the leaf
+   certificate's embedded Signed Certificate Timestamp must verify (RFC 6962) under a trusted
+   CT log whose operating window covers it, proving Fulcio publicly logged the certificate's
+   issuance.
+6. **Identity policy** — the certificate's subject alternative name and OIDC issuer match
    what you require.
 
 There is no "best effort" path: anything missing, unsupported, or invalid raises a
@@ -143,12 +147,12 @@ use K2gl\Sigstore\SigstoreVerifier;
 
 This release verifies, offline, both **DSSE in-toto attestation** bundles and
 **message-signature** (artifact) bundles, signed by a keyless **Fulcio ECDSA P-256**
-certificate, and verifies any **RFC 3161 timestamp** the bundle carries against a trusted
-Timestamp Authority. The following are intentionally out of scope and are rejected with
-`UnsupportedBundleException` rather than skipped:
+certificate. It verifies any **RFC 3161 timestamp** the bundle carries against a trusted
+Timestamp Authority, and the certificate's embedded **SCT** against the trusted root's
+**certificate-transparency** logs (when it provides them). The following are intentionally out
+of scope and are rejected with `UnsupportedBundleException` rather than skipped:
 
 - public-key (non-certificate) bundles and non-P-256 keys;
-- SCT / certificate-transparency verification;
 - TUF-based trust-root fetching and auto-refresh.
 
 These are the planned next steps — each a fail-closed addition in a later release.

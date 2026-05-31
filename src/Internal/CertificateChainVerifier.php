@@ -22,17 +22,23 @@ use K2gl\Sigstore\TrustedRoot;
  */
 final class CertificateChainVerifier
 {
-    /** @throws VerificationFailedException */
+    /**
+     * Returns the matched chain (leaf first, then the trusted authority's
+     * certificates), so the caller can read the leaf's issuer.
+     *
+     * @return list<Certificate>
+     * @throws VerificationFailedException
+     */
     public function verify(
         Certificate $leaf,
         TrustedRoot $trustedRoot,
         \DateTimeImmutable $signingTime,
-    ): void {
+    ): array {
         foreach ($trustedRoot->certificateAuthorities as $authority) {
-            if ($authority->isValidAt($signingTime)
-                && $this->isValidChain(array_merge([$leaf], $authority->certificates()), $signingTime)
-            ) {
-                return;
+            $chain = array_merge([$leaf], $authority->certificates());
+
+            if ($authority->isValidAt($signingTime) && $this->isValidChain($chain, $signingTime)) {
+                return $chain;
             }
         }
         throw new VerificationFailedException(

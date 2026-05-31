@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.4.0
+
+Certificate-transparency (SCT) verification.
+
+- **Embedded SCT verification** — when the trusted root provides certificate-transparency logs
+  (`ctlogs`), the Fulcio leaf certificate's embedded Signed Certificate Timestamp is now verified
+  (RFC 6962, fail-closed): the pre-certificate is reconstructed (this leaf's TBSCertificate with
+  the SCT extension removed), and the SCT signature is checked against a trusted CT log whose
+  operating window covers the SCT timestamp. This proves Fulcio publicly logged the certificate's
+  issuance. An unknown log, an out-of-window timestamp, a signature that does not verify, or a
+  certificate with no embedded SCT all fail.
+- **`TrustedRoot`** now parses `ctlogs` (exposed as `TrustedRoot::$ctLogs`), and
+  **`TransparencyLogInstance`** carries its `validFor` window (`isValidAt()`).
+- Validated against the real public-good and TSA Sigstore fixtures, plus rejection tests for an
+  unknown log, a wrong log key, an out-of-window timestamp, and a certificate without an SCT.
+
+Verification is automatic when the trusted root has CT logs and a no-op when it does not, so
+`verify()` / `verifyArtifact()` keep their signatures and bundles behave exactly as before when
+no CT logs are configured.
+
 ## 0.3.0
 
 RFC 3161 timestamp verification.

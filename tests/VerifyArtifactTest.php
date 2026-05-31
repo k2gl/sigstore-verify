@@ -11,6 +11,7 @@ use K2gl\Sigstore\Exception\UnsupportedBundleException;
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\IdentityPolicy;
 use K2gl\Sigstore\InclusionProof;
+use K2gl\Sigstore\Internal\Asn1;
 use K2gl\Sigstore\Internal\Certificate;
 use K2gl\Sigstore\Internal\CertificateChainVerifier;
 use K2gl\Sigstore\Internal\Ecdsa;
@@ -18,6 +19,8 @@ use K2gl\Sigstore\Internal\Json;
 use K2gl\Sigstore\Internal\MerkleInclusion;
 use K2gl\Sigstore\Internal\Pem;
 use K2gl\Sigstore\Internal\RekorVerifier;
+use K2gl\Sigstore\Internal\Sct;
+use K2gl\Sigstore\Internal\SctVerifier;
 use K2gl\Sigstore\Internal\TrustRootJson;
 use K2gl\Sigstore\MessageSignature;
 use K2gl\Sigstore\SigstoreVerifier;
@@ -49,6 +52,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(CertificateChainVerifier::class)]
 #[CoversClass(RekorVerifier::class)]
 #[CoversClass(MerkleInclusion::class)]
+#[CoversClass(SctVerifier::class)]
+#[CoversClass(Sct::class)]
+#[CoversClass(Asn1::class)]
 #[CoversClass(Ecdsa::class)]
 #[CoversClass(Json::class)]
 #[CoversClass(TrustRootJson::class)]

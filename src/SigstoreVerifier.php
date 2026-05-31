@@ -15,6 +15,7 @@ use K2gl\Sigstore\Internal\CertificateKeyVerifier;
 use K2gl\Sigstore\Internal\Ecdsa;
 use K2gl\Sigstore\Internal\RekorVerifier;
 use K2gl\Sigstore\Internal\Rfc3161Verifier;
+use K2gl\Sigstore\Internal\SctVerifier;
 
 /**
  * Verifies a Sigstore bundle end to end, offline, against a caller-supplied
@@ -44,12 +45,14 @@ final class SigstoreVerifier
     private readonly CertificateChainVerifier $chainVerifier;
     private readonly RekorVerifier $rekorVerifier;
     private readonly Rfc3161Verifier $rfc3161Verifier;
+    private readonly SctVerifier $sctVerifier;
 
     public function __construct()
     {
         $this->chainVerifier = new CertificateChainVerifier();
         $this->rekorVerifier = new RekorVerifier();
         $this->rfc3161Verifier = new Rfc3161Verifier($this->chainVerifier);
+        $this->sctVerifier = new SctVerifier();
     }
 
     /**
@@ -190,11 +193,20 @@ final class SigstoreVerifier
         if (!$leaf->isEcdsaP256()) {
             throw new UnsupportedBundleException('Only ECDSA P-256 Fulcio certificates are supported in this version.');
         }
-        $this->chainVerifier->verify(
+        $chain = $this->chainVerifier->verify(
             leaf: $leaf,
             trustedRoot: $trustedRoot,
             signingTime: $signingTime,
         );
+
+        // Certificate transparency: when the trusted root provides CT logs, the
+        // leaf's embedded SCT must prove Fulcio logged the certificate's issuance.
+        if ($trustedRoot->ctLogs !== []) {
+            $issuer = $chain[1] ?? throw new VerificationFailedException(
+                'Verified certificate chain has no issuer for SCT verification.'
+            );
+            $this->sctVerifier->verify($leaf, $issuer, $trustedRoot->ctLogs);
+        }
 
         return $leaf;
     }
