@@ -75,7 +75,7 @@ final class SigstoreVerifierTest extends TestCase
     private static function fixture(string $name): string
     {
         $contents = file_get_contents(__DIR__ . '/fixtures/' . $name);
-        self::assertIsString($contents);
+        fact($contents)->isString();
 
         return $contents;
     }
@@ -118,7 +118,7 @@ final class SigstoreVerifierTest extends TestCase
     public function testRejectsTamperedPayload(): void
     {
         $raw = json_decode($this->fixture('bundle-provenance.json'), true);
-        self::assertIsArray($raw);
+        fact($raw)->isArray();
         $raw['dsseEnvelope']['payload'] = base64_encode(
             '{"_type":"https://in-toto.io/Statement/v0.1","subject":[{"name":"x",'
             . '"digest":{"sha256":"00"}}],"predicateType":"https://slsa.dev/provenance/v0.2","predicate":{}}'
@@ -189,11 +189,11 @@ final class SigstoreVerifierTest extends TestCase
     public function testRejectsTamperedSignedEntryTimestamp(): void
     {
         $raw = json_decode($this->fixture('bundle-provenance.json'), true);
-        self::assertIsArray($raw);
+        fact($raw)->isArray();
 
         $entry = &$raw['verificationMaterial']['tlogEntries'][0];
         $set = base64_decode((string) $entry['inclusionPromise']['signedEntryTimestamp'], true);
-        self::assertIsString($set);
+        fact($set)->isString();
         $set[10] = $set[10] === "\x00" ? "\x01" : "\x00"; // flip a byte inside the signature
         $entry['inclusionPromise']['signedEntryTimestamp'] = base64_encode($set);
 
@@ -208,7 +208,7 @@ final class SigstoreVerifierTest extends TestCase
     public function testRejectsNonInTotoPayloadTypeAsUnsupported(): void
     {
         $raw = json_decode($this->fixture('bundle-provenance.json'), true);
-        self::assertIsArray($raw);
+        fact($raw)->isArray();
         $raw['dsseEnvelope']['payloadType'] = 'application/vnd.dev.cosign.simplesigning.v1+json';
 
         $this->expectException(UnsupportedBundleException::class);

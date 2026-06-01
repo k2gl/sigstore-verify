@@ -57,7 +57,7 @@ final class Rfc3161TimestampTest extends TestCase
     private function timestamp(): Rfc3161Timestamp
     {
         $der = base64_decode($this->bundleField('timestampVerificationData', 'rfc3161Timestamps', 0, 'signedTimestamp'), true);
-        self::assertIsString($der);
+        fact($der)->isString();
 
         return new Rfc3161Timestamp($der);
     }
@@ -65,7 +65,7 @@ final class Rfc3161TimestampTest extends TestCase
     private function signature(): string
     {
         $signature = base64_decode($this->signatureBase64(), true);
-        self::assertIsString($signature);
+        fact($signature)->isString();
 
         return $signature;
     }
@@ -165,7 +165,7 @@ final class Rfc3161TimestampTest extends TestCase
         // verifies: the token is from a TSA the trusted root does not anchor, so
         // a present timestamp that cannot be verified fails the whole check.
         $raw = json_decode(self::fixture('conformance-msgsig-v0.3.json'), true);
-        self::assertIsArray($raw);
+        fact($raw)->isArray();
         $raw['verificationMaterial']['timestampVerificationData']['rfc3161Timestamps'] = [
             ['signedTimestamp' => $this->signatureToken()],
         ];
@@ -189,9 +189,9 @@ final class Rfc3161TimestampTest extends TestCase
     private function signatureBase64(): string
     {
         $bundle = json_decode(self::fixture('bundle-tsa.json'), true);
-        self::assertIsArray($bundle);
+        fact($bundle)->isArray();
         $value = $bundle['messageSignature']['signature'] ?? null;
-        self::assertIsString($value);
+        fact($value)->isString();
 
         return $value;
     }
@@ -204,9 +204,9 @@ final class Rfc3161TimestampTest extends TestCase
     private function bundleField(string $tsData, string $list, int $index, string $field): string
     {
         $bundle = json_decode(self::fixture('bundle-tsa.json'), true);
-        self::assertIsArray($bundle);
+        fact($bundle)->isArray();
         $value = $bundle['verificationMaterial'][$tsData][$list][$index][$field] ?? null;
-        self::assertIsString($value);
+        fact($value)->isString();
 
         return $value;
     }
@@ -214,7 +214,7 @@ final class Rfc3161TimestampTest extends TestCase
     private static function fixture(string $name): string
     {
         $contents = file_get_contents(__DIR__ . '/fixtures/' . $name);
-        self::assertIsString($contents);
+        fact($contents)->isString();
 
         return $contents;
     }

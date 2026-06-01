@@ -127,11 +127,11 @@ final class SctVerifierTest extends TestCase
     private function leaf(): Certificate
     {
         $bundle = json_decode($this->fixture('bundle-provenance.json'), true);
-        self::assertIsArray($bundle);
+        fact($bundle)->isArray();
         $raw = $bundle['verificationMaterial']['x509CertificateChain']['certificates'][0]['rawBytes'];
-        self::assertIsString($raw);
+        fact($raw)->isString();
         $der = base64_decode($raw, true);
-        self::assertIsString($der);
+        fact($der)->isString();
 
         return Certificate::fromDer($der);
     }
@@ -157,7 +157,7 @@ final class SctVerifierTest extends TestCase
     private function fixture(string $name): string
     {
         $contents = file_get_contents(__DIR__ . '/fixtures/' . $name);
-        self::assertIsString($contents);
+        fact($contents)->isString();
 
         return $contents;
     }

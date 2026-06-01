@@ -49,7 +49,7 @@ final class BundleTest extends TestCase
     public function testParsesRealProvenanceBundle(): void
     {
         $raw = file_get_contents(__DIR__ . '/fixtures/bundle-provenance.json');
-        self::assertIsString($raw);
+        fact($raw)->isString();
 
         $bundle = Bundle::fromJson($raw);
 
@@ -102,10 +102,10 @@ final class BundleTest extends TestCase
             'dsseEnvelope' => $this->minimalDsseEnvelope(),
         ]);
 
-        self::assertTrue($bundle->isPublicKey());
-        self::assertFalse($bundle->hasCertificate());
-        self::assertNull($bundle->leafCertificate);
-        self::assertSame('abc', $bundle->publicKeyHint);
+        fact($bundle->isPublicKey())->true();
+        fact($bundle->hasCertificate())->false();
+        fact($bundle->leafCertificate)->null();
+        fact($bundle->publicKeyHint)->is('abc');
     }
 
     public function testParsesPublicKeyMaterialWithoutHint(): void
@@ -119,8 +119,8 @@ final class BundleTest extends TestCase
             'dsseEnvelope' => $this->minimalDsseEnvelope(),
         ]);
 
-        self::assertTrue($bundle->isPublicKey());
-        self::assertNull($bundle->publicKeyHint);
+        fact($bundle->isPublicKey())->true();
+        fact($bundle->publicKeyHint)->null();
     }
 
     public function testRejectsMissingContent(): void

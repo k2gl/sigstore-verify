@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
+use function K2gl\PHPUnitFluentAssertions\fact;
+
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\Internal\OpensslVerifier;
@@ -42,10 +44,10 @@ final class SignatureKeyTest extends TestCase
         $signature = $private->sign(self::MESSAGE);
         $key = SignatureKey::fromPem($private->getPublicKey()->toString('PKCS8'));
 
-        self::assertTrue($key->verify(self::MESSAGE, $signature));
-        self::assertSame($digest, $key->digestAlgorithm());
-        self::assertFalse($key->isEd25519());
-        self::assertFalse($key->verify('tampered', $signature));
+        fact($key->verify(self::MESSAGE, $signature))->true();
+        fact($key->digestAlgorithm())->is($digest);
+        fact($key->isEd25519())->false();
+        fact($key->verify('tampered', $signature))->false();
     }
 
     public function testVerifiesRsa(): void
@@ -54,9 +56,9 @@ final class SignatureKeyTest extends TestCase
         $signature = $private->sign(self::MESSAGE);
         $key = SignatureKey::fromPem($private->getPublicKey()->toString('PKCS8'));
 
-        self::assertTrue($key->verify(self::MESSAGE, $signature));
-        self::assertSame('sha256', $key->digestAlgorithm());
-        self::assertFalse($key->verify(self::MESSAGE, strrev($signature)));
+        fact($key->verify(self::MESSAGE, $signature))->true();
+        fact($key->digestAlgorithm())->is('sha256');
+        fact($key->verify(self::MESSAGE, strrev($signature)))->false();
     }
 
     public function testVerifiesEd25519(): void
@@ -65,9 +67,9 @@ final class SignatureKeyTest extends TestCase
         $signature = $private->sign(self::MESSAGE);
         $key = SignatureKey::fromPem($private->getPublicKey()->toString('PKCS8'));
 
-        self::assertTrue($key->isEd25519());
-        self::assertTrue($key->verify(self::MESSAGE, $signature));
-        self::assertFalse($key->verify('tampered', $signature));
+        fact($key->isEd25519())->true();
+        fact($key->verify(self::MESSAGE, $signature))->true();
+        fact($key->verify('tampered', $signature))->false();
     }
 
     public function testRejectsUnsupportedCurve(): void

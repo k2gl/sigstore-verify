@@ -24,7 +24,7 @@ final class TrustedRootTest extends TestCase
     private function publicGood(): TrustedRoot
     {
         $raw = file_get_contents(__DIR__ . '/fixtures/trusted-root-public-good.json');
-        self::assertIsString($raw);
+        fact($raw)->isString();
 
         return TrustedRoot::fromJson($raw);
     }
@@ -39,7 +39,7 @@ final class TrustedRootTest extends TestCase
     public function testFindsTransparencyLogByLogId(): void
     {
         $logId = base64_decode('wNI9atQGlz+VWfO6LRygH4QUfY/8W4RFwiT5i5WRgB0=', true);
-        self::assertIsString($logId);
+        fact($logId)->isString();
 
         fact($this->publicGood()->findTransparencyLog($logId) !== null)->true();
     }

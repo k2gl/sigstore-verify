@@ -23,9 +23,9 @@ final class MerkleInclusionTest extends TestCase
     private function realProof(): array
     {
         $raw = file_get_contents(__DIR__ . '/fixtures/bundle_v3.txt.sigstore');
-        self::assertIsString($raw);
+        fact($raw)->isString();
         $bundle = json_decode($raw, true);
-        self::assertIsArray($bundle);
+        fact($bundle)->isArray();
         $entry = $bundle['verificationMaterial']['tlogEntries'][0];
         $proof = $entry['inclusionProof'];
 
@@ -47,7 +47,7 @@ final class MerkleInclusionTest extends TestCase
     private static function b64(string $value): string
     {
         $decoded = base64_decode($value, true);
-        self::assertIsString($decoded);
+        fact($decoded)->isString();
 
         return $decoded;
     }

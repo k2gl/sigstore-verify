@@ -8,6 +8,9 @@ use K2gl\Dsse\Envelope;
 use K2gl\Dsse\Pae;
 use K2gl\Dsse\Signature;
 use K2gl\InToto\Statement;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
+
 use K2gl\Sigstore\Bundle;
 use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Checkpoint;
@@ -97,7 +100,7 @@ final class PublicKeyBundleTest extends TestCase
 
         $envelope = (new SigstoreVerifier())->verifyWithPublicKey($bundle, $publicKeyPem, $this->trustedRoot());
 
-        self::assertSame(self::PAYLOAD, $envelope->payload);
+        fact($envelope->payload)->is(self::PAYLOAD);
     }
 
     /** @return iterable<string, array{string, string}> algorithm => [.., message-digest algorithm] */
@@ -136,7 +139,7 @@ final class PublicKeyBundleTest extends TestCase
             expectedHint: self::HINT,
         );
 
-        self::assertSame(self::PAYLOAD, $envelope->payload);
+        fact($envelope->payload)->is(self::PAYLOAD);
     }
 
     public function testRejectsHintMismatch(): void
@@ -215,7 +218,7 @@ final class PublicKeyBundleTest extends TestCase
     public function testRejectsCertificateBundlePassedToPublicKeyMethod(): void
     {
         $contents = file_get_contents(__DIR__ . '/fixtures/bundle-provenance.json');
-        self::assertIsString($contents);
+        fact($contents)->isString();
         [, $publicKeyPem] = $this->keyPair('ecdsa-p256');
 
         $this->expectException(UnsupportedBundleException::class);

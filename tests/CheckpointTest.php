@@ -22,11 +22,11 @@ final class CheckpointTest extends TestCase
     private function realCheckpoint(): Checkpoint
     {
         $raw = file_get_contents(__DIR__ . '/fixtures/bundle_v3.txt.sigstore');
-        self::assertIsString($raw);
+        fact($raw)->isString();
         $bundle = json_decode($raw, true);
-        self::assertIsArray($bundle);
+        fact($bundle)->isArray();
         $envelope = $bundle['verificationMaterial']['tlogEntries'][0]['inclusionProof']['checkpoint']['envelope'];
-        self::assertIsString($envelope);
+        fact($envelope)->isString();
 
         return new Checkpoint($envelope);
     }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
+use function K2gl\PHPUnitFluentAssertions\fact;
+
 use K2gl\Sigstore\Bundle;
 use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Checkpoint;
@@ -90,7 +92,7 @@ final class VerifyArtifactTest extends TestCase
     private static function fixture(string $name): string
     {
         $contents = file_get_contents(__DIR__ . '/fixtures/' . $name);
-        self::assertIsString($contents);
+        fact($contents)->isString();
 
         return $contents;
     }
@@ -144,10 +146,10 @@ final class VerifyArtifactTest extends TestCase
     public function testRejectsTamperedSignature(): void
     {
         $raw = json_decode(self::fixture('conformance-msgsig-v0.3.json'), true);
-        self::assertIsArray($raw);
+        fact($raw)->isArray();
 
         $signature = base64_decode((string) $raw['messageSignature']['signature'], true);
-        self::assertIsString($signature);
+        fact($signature)->isString();
         $signature[8] = $signature[8] === "\x00" ? "\x01" : "\x00";
         $raw['messageSignature']['signature'] = base64_encode($signature);
 

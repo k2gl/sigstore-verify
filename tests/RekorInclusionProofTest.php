@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
+use function K2gl\PHPUnitFluentAssertions\fact;
+
 use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Checkpoint;
 use K2gl\Sigstore\Exception\VerificationFailedException;
@@ -47,11 +49,11 @@ final class RekorInclusionProofTest extends TestCase
     protected function setUp(): void
     {
         $key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
-        self::assertInstanceOf(\OpenSSLAsymmetricKey::class, $key);
+        fact($key)->instanceOf(\OpenSSLAsymmetricKey::class);
         $this->logKey = $key;
 
         $details = openssl_pkey_get_details($key);
-        self::assertIsArray($details);
+        fact($details)->isArray();
         $publicKeyPem = $details['key'];
 
         $this->logId = random_bytes(32);
@@ -136,9 +138,9 @@ final class RekorInclusionProofTest extends TestCase
     {
         // A trusted root whose log key is unrelated to the checkpoint signer.
         $other = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
-        self::assertInstanceOf(\OpenSSLAsymmetricKey::class, $other);
+        fact($other)->instanceOf(\OpenSSLAsymmetricKey::class);
         $details = openssl_pkey_get_details($other);
-        self::assertIsArray($details);
+        fact($details)->isArray();
         $foreignRoot = new TrustedRoot(
             [new CertificateAuthority(certChainDer: [], validForStart: null, validForEnd: null)],
             [new TransparencyLogInstance($this->logId, $details['key'])],
