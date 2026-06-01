@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\Checkpoint;
 use K2gl\Sigstore\Exception\InvalidBundleException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 /**
  * Signed-note (checkpoint) parsing, checked against a real Rekor checkpoint and

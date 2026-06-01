@@ -38,8 +38,7 @@ final class Bundle
         public readonly ?MessageSignature $messageSignature = null,
         public readonly array $rfc3161Timestamps = [],
         public readonly ?string $publicKeyHint = null,
-    ) {
-    }
+    ) {}
 
     public function isDsse(): bool
     {
@@ -73,7 +72,7 @@ final class Bundle
     {
         $mediaType = Json::string($data, 'mediaType');
 
-        if (!str_starts_with($mediaType, self::MEDIA_TYPE_PREFIX)) {
+        if (! str_starts_with($mediaType, self::MEDIA_TYPE_PREFIX)) {
             throw new UnsupportedBundleException(sprintf('Unsupported bundle media type "%s".', $mediaType));
         }
 
@@ -124,7 +123,7 @@ final class Bundle
             $chain = Json::list(Json::object($material, 'x509CertificateChain'), 'certificates');
             $leaf = $chain[0] ?? null;
 
-            if (!is_array($leaf)) {
+            if (! is_array($leaf)) {
                 throw new InvalidBundleException('x509CertificateChain.certificates is empty.');
             }
 
@@ -160,7 +159,7 @@ final class Bundle
         $entries = [];
 
         foreach (Json::list($material, 'tlogEntries') as $raw) {
-            if (!is_array($raw)) {
+            if (! is_array($raw)) {
                 throw new InvalidBundleException('Each tlog entry must be a JSON object.');
             }
             /** @var array<string, mixed> $raw */
@@ -182,18 +181,18 @@ final class Bundle
     {
         $data = $material['timestampVerificationData'] ?? null;
 
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             return [];
         }
         $raw = $data['rfc3161Timestamps'] ?? null;
 
-        if (!is_array($raw) || !array_is_list($raw)) {
+        if (! is_array($raw) || ! array_is_list($raw)) {
             return [];
         }
         $timestamps = [];
 
         foreach ($raw as $entry) {
-            if (!is_array($entry)) {
+            if (! is_array($entry)) {
                 throw new InvalidBundleException('Each RFC 3161 timestamp must be a JSON object.');
             }
             /** @var array<string, mixed> $entry */

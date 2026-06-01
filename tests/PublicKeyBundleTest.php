@@ -8,9 +8,6 @@ use K2gl\Dsse\Envelope;
 use K2gl\Dsse\Pae;
 use K2gl\Dsse\Signature;
 use K2gl\InToto\Statement;
-
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\Bundle;
 use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Checkpoint;
@@ -33,6 +30,8 @@ use phpseclib3\Crypt\RSA;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 /**
  * End-to-end verification of public-key (non-certificate) bundles through
@@ -98,7 +97,7 @@ final class PublicKeyBundleTest extends TestCase
         $signature = $private->sign(Pae::encode(Statement::PAYLOAD_TYPE, self::PAYLOAD));
         $bundle = $this->dsseBundle($signature);
 
-        $envelope = (new SigstoreVerifier())->verifyWithPublicKey($bundle, $publicKeyPem, $this->trustedRoot());
+        $envelope = (new SigstoreVerifier)->verifyWithPublicKey($bundle, $publicKeyPem, $this->trustedRoot());
 
         fact($envelope->payload)->is(self::PAYLOAD);
     }
@@ -118,7 +117,7 @@ final class PublicKeyBundleTest extends TestCase
         $signature = $private->sign(self::ARTIFACT);
         $bundle = $this->artifactBundle($hashAlgorithm, $signature);
 
-        (new SigstoreVerifier())->verifyArtifactWithPublicKey(
+        (new SigstoreVerifier)->verifyArtifactWithPublicKey(
             $bundle,
             self::ARTIFACT,
             $publicKeyPem,
@@ -132,7 +131,7 @@ final class PublicKeyBundleTest extends TestCase
         [$private, $publicKeyPem] = $this->keyPair('ecdsa-p256');
         $signature = $private->sign(Pae::encode(Statement::PAYLOAD_TYPE, self::PAYLOAD));
 
-        $envelope = (new SigstoreVerifier())->verifyWithPublicKey(
+        $envelope = (new SigstoreVerifier)->verifyWithPublicKey(
             $this->dsseBundle($signature),
             $publicKeyPem,
             $this->trustedRoot(),
@@ -148,7 +147,7 @@ final class PublicKeyBundleTest extends TestCase
         $signature = $private->sign(Pae::encode(Statement::PAYLOAD_TYPE, self::PAYLOAD));
 
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verifyWithPublicKey(
+        (new SigstoreVerifier)->verifyWithPublicKey(
             $this->dsseBundle($signature),
             $publicKeyPem,
             $this->trustedRoot(),
@@ -163,7 +162,7 @@ final class PublicKeyBundleTest extends TestCase
         [, $strangerPem] = $this->keyPair('ecdsa-p256');
 
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verifyWithPublicKey($this->dsseBundle($signature), $strangerPem, $this->trustedRoot());
+        (new SigstoreVerifier)->verifyWithPublicKey($this->dsseBundle($signature), $strangerPem, $this->trustedRoot());
     }
 
     public function testRejectsTamperedPayload(): void
@@ -182,7 +181,7 @@ final class PublicKeyBundleTest extends TestCase
         );
 
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verifyWithPublicKey($bundle, $publicKeyPem, $this->trustedRoot());
+        (new SigstoreVerifier)->verifyWithPublicKey($bundle, $publicKeyPem, $this->trustedRoot());
     }
 
     public function testRejectsTamperedArtifact(): void
@@ -192,7 +191,7 @@ final class PublicKeyBundleTest extends TestCase
         $bundle = $this->artifactBundle('SHA2_256', $signature);
 
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verifyArtifactWithPublicKey(
+        (new SigstoreVerifier)->verifyArtifactWithPublicKey(
             $bundle,
             'a different artifact',
             $publicKeyPem,
@@ -207,7 +206,7 @@ final class PublicKeyBundleTest extends TestCase
         $bundle = $this->artifactBundle('SHA2_512', $signature);
 
         $this->expectException(UnsupportedBundleException::class);
-        (new SigstoreVerifier())->verifyArtifactWithPublicKey(
+        (new SigstoreVerifier)->verifyArtifactWithPublicKey(
             $bundle,
             self::ARTIFACT,
             $publicKeyPem,
@@ -222,7 +221,7 @@ final class PublicKeyBundleTest extends TestCase
         [, $publicKeyPem] = $this->keyPair('ecdsa-p256');
 
         $this->expectException(UnsupportedBundleException::class);
-        (new SigstoreVerifier())->verifyWithPublicKey(Bundle::fromJson($contents), $publicKeyPem, $this->trustedRoot());
+        (new SigstoreVerifier)->verifyWithPublicKey(Bundle::fromJson($contents), $publicKeyPem, $this->trustedRoot());
     }
 
     public function testRejectsPublicKeyBundlePassedToKeylessMethod(): void
@@ -232,7 +231,7 @@ final class PublicKeyBundleTest extends TestCase
         $policy = new IdentityPolicy(san: 'https://example.test/id', issuer: 'https://issuer.test');
 
         $this->expectException(UnsupportedBundleException::class);
-        (new SigstoreVerifier())->verify($this->dsseBundle($signature), $this->trustedRoot(), $policy);
+        (new SigstoreVerifier)->verify($this->dsseBundle($signature), $this->trustedRoot(), $policy);
     }
 
     /** @return array{0: PrivateKey, 1: string} a signing key (hash already set) and its public PEM */

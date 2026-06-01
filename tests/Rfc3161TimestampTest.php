@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\Bundle;
 use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Exception\VerificationFailedException;
@@ -23,6 +21,9 @@ use K2gl\Sigstore\SigstoreVerifier;
 use K2gl\Sigstore\TrustedRoot;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use DateTimeImmutable;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 /**
  * RFC 3161 timestamp verification against real time-stamp tokens. The token and
@@ -90,7 +91,7 @@ final class Rfc3161TimestampTest extends TestCase
 
     public function testVerifiesRealTimestamp(): void
     {
-        $genTime = (new Rfc3161Verifier())->verify(
+        $genTime = (new Rfc3161Verifier)->verify(
             timestamp: $this->timestamp(),
             signature: $this->signature(),
             timestampAuthorities: $this->trustedRoot()->timestampAuthorities,
@@ -105,7 +106,7 @@ final class Rfc3161TimestampTest extends TestCase
         $der[strlen($der) - 1] = $der[strlen($der) - 1] === "\x00" ? "\x01" : "\x00";
 
         $this->expectException(VerificationFailedException::class);
-        (new Rfc3161Verifier())->verify(
+        (new Rfc3161Verifier)->verify(
             timestamp: new Rfc3161Timestamp($der),
             signature: $this->signature(),
             timestampAuthorities: $this->trustedRoot()->timestampAuthorities,
@@ -116,7 +117,7 @@ final class Rfc3161TimestampTest extends TestCase
     {
         // A different signature: the message imprint no longer matches.
         $this->expectException(VerificationFailedException::class);
-        (new Rfc3161Verifier())->verify(
+        (new Rfc3161Verifier)->verify(
             timestamp: $this->timestamp(),
             signature: $this->signature() . "\x00",
             timestampAuthorities: $this->trustedRoot()->timestampAuthorities,
@@ -126,7 +127,7 @@ final class Rfc3161TimestampTest extends TestCase
     public function testRejectsWhenNoTrustedTimestampAuthority(): void
     {
         $this->expectException(VerificationFailedException::class);
-        (new Rfc3161Verifier())->verify(
+        (new Rfc3161Verifier)->verify(
             timestamp: $this->timestamp(),
             signature: $this->signature(),
             timestampAuthorities: [],
@@ -141,11 +142,11 @@ final class Rfc3161TimestampTest extends TestCase
         $narrowed = new CertificateAuthority(
             certChainDer: $authority->certChainDer,
             validForStart: null,
-            validForEnd: new \DateTimeImmutable('2025-05-01T00:00:00Z'),
+            validForEnd: new DateTimeImmutable('2025-05-01T00:00:00Z'),
         );
 
         $this->expectException(VerificationFailedException::class);
-        (new Rfc3161Verifier())->verify(
+        (new Rfc3161Verifier)->verify(
             timestamp: $this->timestamp(),
             signature: $this->signature(),
             timestampAuthorities: [$narrowed],
@@ -174,7 +175,7 @@ final class Rfc3161TimestampTest extends TestCase
         fact($bundle->rfc3161Timestamps)->count(1);
 
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verifyArtifact(
+        (new SigstoreVerifier)->verifyArtifact(
             bundle: $bundle,
             artifact: self::fixture('conformance-artifact.txt'),
             trustedRoot: TrustedRoot::fromJson(self::fixture('trusted-root-public-good.json')),

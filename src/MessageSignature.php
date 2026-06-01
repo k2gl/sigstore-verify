@@ -20,8 +20,7 @@ final class MessageSignature
         public readonly string $hashAlgorithm,
         public readonly string $messageDigest,
         public readonly string $signature,
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self

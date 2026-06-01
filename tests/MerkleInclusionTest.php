@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\Internal\MerkleInclusion;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 /**
  * RFC 6962 inclusion-proof arithmetic, checked against a real Rekor proof (the

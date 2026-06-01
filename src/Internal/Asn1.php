@@ -94,7 +94,7 @@ final class Asn1
      */
     public static function children(string $der, array $node): array
     {
-        if (!$node['constructed']) {
+        if (! $node['constructed']) {
             throw new VerificationFailedException('Expected a constructed ASN.1 value.');
         }
         $children = [];

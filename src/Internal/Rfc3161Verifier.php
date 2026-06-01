@@ -8,6 +8,7 @@ use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\Rfc3161Timestamp;
+use DateTimeImmutable;
 
 /**
  * Verifies an RFC 3161 time-stamp token, offline, against the trusted timestamp
@@ -34,7 +35,7 @@ final class Rfc3161Verifier
 
     public function __construct(?CertificateChainVerifier $chainVerifier = null)
     {
-        $this->chainVerifier = $chainVerifier ?? new CertificateChainVerifier();
+        $this->chainVerifier = $chainVerifier ?? new CertificateChainVerifier;
     }
 
     /**
@@ -45,7 +46,7 @@ final class Rfc3161Verifier
         Rfc3161Timestamp $timestamp,
         string $signature,
         array $timestampAuthorities,
-    ): \DateTimeImmutable {
+    ): DateTimeImmutable {
         $token = Cms::parse($timestamp->signedTimestamp);
 
         if ($token->contentTypeOid !== self::OID_TST_INFO) {
@@ -55,14 +56,14 @@ final class Rfc3161Verifier
         // The signed message-digest attribute must match the TSTInfo it covers.
         $tstInfoHash = hash(self::hashAlgorithm($token->digestAlgorithmOid), $token->tstInfoDer, true);
 
-        if ($token->messageDigest === null || !hash_equals($tstInfoHash, $token->messageDigest)) {
+        if ($token->messageDigest === null || ! hash_equals($tstInfoHash, $token->messageDigest)) {
             throw new VerificationFailedException('Time-stamp token message-digest attribute does not match its content.');
         }
 
         // The message imprint binds the timestamp to the signature it covers.
         $signatureHash = hash(self::hashAlgorithm($token->messageImprintHashOid), $signature, true);
 
-        if (!hash_equals($signatureHash, $token->messageImprintHash)) {
+        if (! hash_equals($signatureHash, $token->messageImprintHash)) {
             throw new VerificationFailedException('Time-stamp token does not cover the bundle signature.');
         }
 
@@ -82,11 +83,11 @@ final class Rfc3161Verifier
         foreach ($timestampAuthorities as $authority) {
             $chain = $authority->certificates();
 
-            if ($chain === [] || !$authority->isValidAt($token->genTime)) {
+            if ($chain === [] || ! $authority->isValidAt($token->genTime)) {
                 continue;
             }
 
-            if (!$this->chainVerifier->isValidChain($chain, $token->genTime)) {
+            if (! $this->chainVerifier->isValidChain($chain, $token->genTime)) {
                 continue;
             }
 

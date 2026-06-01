@@ -15,6 +15,7 @@ use K2gl\Sigstore\Internal\RekorVerifier;
 use K2gl\Sigstore\Internal\Rfc3161Verifier;
 use K2gl\Sigstore\Internal\SctVerifier;
 use K2gl\Sigstore\Internal\SignatureKey;
+use DateTimeImmutable;
 
 /**
  * Verifies a Sigstore bundle end to end, offline, against a caller-supplied
@@ -52,10 +53,10 @@ final class SigstoreVerifier
 
     public function __construct()
     {
-        $this->chainVerifier = new CertificateChainVerifier();
-        $this->rekorVerifier = new RekorVerifier();
+        $this->chainVerifier = new CertificateChainVerifier;
+        $this->rekorVerifier = new RekorVerifier;
         $this->rfc3161Verifier = new Rfc3161Verifier($this->chainVerifier);
-        $this->sctVerifier = new SctVerifier();
+        $this->sctVerifier = new SctVerifier;
     }
 
     /**
@@ -246,7 +247,7 @@ final class SigstoreVerifier
 
     private function requireCertificateBundle(Bundle $bundle): void
     {
-        if (!$bundle->hasCertificate()) {
+        if (! $bundle->hasCertificate()) {
             throw new UnsupportedBundleException(
                 'This is a public-key bundle; use verifyWithPublicKey() / verifyArtifactWithPublicKey() '
                 . 'and supply the trusted key.'
@@ -263,7 +264,7 @@ final class SigstoreVerifier
         }
 
         if ($expectedHint !== null
-            && ($bundle->publicKeyHint === null || !hash_equals($expectedHint, $bundle->publicKeyHint))
+            && ($bundle->publicKeyHint === null || ! hash_equals($expectedHint, $bundle->publicKeyHint))
         ) {
             throw new VerificationFailedException('Bundle public-key hint does not match the expected hint.');
         }
@@ -304,11 +305,11 @@ final class SigstoreVerifier
             )),
         };
 
-        if (!hash_equals($signature->messageDigest, hash($digest, $artifact, true))) {
+        if (! hash_equals($signature->messageDigest, hash($digest, $artifact, true))) {
             throw new VerificationFailedException('Artifact does not match the bundle message digest.');
         }
 
-        if (!$key->verify($artifact, $signature->signature)) {
+        if (! $key->verify($artifact, $signature->signature)) {
             throw new VerificationFailedException(
                 'Message signature does not verify against the signing public key.'
             );
@@ -319,7 +320,7 @@ final class SigstoreVerifier
     private function verifyCertificate(
         Bundle $bundle,
         TrustedRoot $trustedRoot,
-        \DateTimeImmutable $signingTime,
+        DateTimeImmutable $signingTime,
     ): Certificate {
         $der = $bundle->leafCertificate ?? throw new UnsupportedBundleException('Bundle has no certificate.');
         $leaf = Certificate::fromDer($der);
@@ -352,7 +353,7 @@ final class SigstoreVerifier
         Bundle $bundle,
         TrustedRoot $trustedRoot,
         string $signature,
-    ): \DateTimeImmutable {
+    ): DateTimeImmutable {
         $genTime = null;
 
         foreach ($bundle->rfc3161Timestamps as $timestamp) {
@@ -373,7 +374,7 @@ final class SigstoreVerifier
             throw new VerificationFailedException('Bundle has no trusted time source.');
         }
 
-        return (new \DateTimeImmutable())->setTimestamp($entry->integratedTime);
+        return (new DateTimeImmutable)->setTimestamp($entry->integratedTime);
     }
 
     /** The DSSE signature bytes an RFC 3161 timestamp would cover. */

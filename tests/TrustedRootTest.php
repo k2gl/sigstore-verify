@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Exception\TrustRootException;
 use K2gl\Sigstore\Internal\TrustRootJson;
@@ -13,6 +11,9 @@ use K2gl\Sigstore\TransparencyLogInstance;
 use K2gl\Sigstore\TrustedRoot;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use DateTimeImmutable;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 #[CoversClass(TrustedRoot::class)]
 #[CoversClass(TrustRootJson::class)]
@@ -53,8 +54,8 @@ final class TrustedRootTest extends TestCase
     {
         // CA[0] in the public-good root expired at the end of 2022.
         $ca = $this->publicGood()->certificateAuthorities[0];
-        fact($ca->isValidAt(new \DateTimeImmutable('2022-01-01T00:00:00Z')))->true();
-        fact($ca->isValidAt(new \DateTimeImmutable('2024-01-01T00:00:00Z')))->false();
+        fact($ca->isValidAt(new DateTimeImmutable('2022-01-01T00:00:00Z')))->true();
+        fact($ca->isValidAt(new DateTimeImmutable('2024-01-01T00:00:00Z')))->false();
     }
 
     public function testRejectsNonObjectJson(): void

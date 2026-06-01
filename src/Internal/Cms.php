@@ -6,6 +6,8 @@ namespace K2gl\Sigstore\Internal;
 
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
 use K2gl\Sigstore\Exception\VerificationFailedException;
+use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * Parses an RFC 3161 time-stamp token — a CMS {@see https://www.rfc-editor.org/rfc/rfc5652 SignedData}
@@ -207,7 +209,7 @@ final class Cms
         ];
     }
 
-    private static function genTime(string $tstInfoDer): \DateTimeImmutable
+    private static function genTime(string $tstInfoDer): DateTimeImmutable
     {
         $fields = self::children($tstInfoDer, self::read($tstInfoDer, 0));
         $node = self::find($fields, self::CLASS_UNIVERSAL, self::TAG_GENERALIZED_TIME, first: true);
@@ -220,7 +222,7 @@ final class Cms
         if (preg_match('/^(\d{14})(?:\.\d+)?Z$/', $value, $matches) !== 1) {
             throw new UnsupportedBundleException('Unsupported TSTInfo genTime format.');
         }
-        $time = \DateTimeImmutable::createFromFormat('!YmdHis', $matches[1], new \DateTimeZone('UTC'));
+        $time = DateTimeImmutable::createFromFormat('!YmdHis', $matches[1], new DateTimeZone('UTC'));
 
         if ($time === false) {
             throw new VerificationFailedException('Invalid TSTInfo genTime.');
@@ -291,7 +293,7 @@ final class Cms
      */
     private static function children(string $der, array $node): array
     {
-        if (!$node['constructed']) {
+        if (! $node['constructed']) {
             throw new VerificationFailedException('Expected a constructed ASN.1 value in the time-stamp token.');
         }
         $children = [];

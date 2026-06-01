@@ -6,6 +6,7 @@ namespace K2gl\Sigstore;
 
 use K2gl\Sigstore\Internal\Certificate;
 use K2gl\Sigstore\Internal\TrustRootJson;
+use DateTimeImmutable;
 
 /**
  * A certificate authority (Fulcio) from the trusted root: its certificate chain
@@ -21,10 +22,9 @@ final class CertificateAuthority
     /** @param list<string> $certChainDer DER certificates, leaf-most first, root last */
     public function __construct(
         public readonly array $certChainDer,
-        public readonly ?\DateTimeImmutable $validForStart,
-        public readonly ?\DateTimeImmutable $validForEnd,
-    ) {
-    }
+        public readonly ?DateTimeImmutable $validForStart,
+        public readonly ?DateTimeImmutable $validForEnd,
+    ) {}
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self
@@ -34,7 +34,7 @@ final class CertificateAuthority
         $der = [];
 
         foreach (TrustRootJson::list($certChain, 'certificates') as $entry) {
-            if (!is_array($entry)) {
+            if (! is_array($entry)) {
                 throw new Exception\TrustRootException('Trusted-root certificate entry must be an object.');
             }
             /** @var array<string, mixed> $entry */
@@ -50,7 +50,7 @@ final class CertificateAuthority
         );
     }
 
-    public function isValidAt(\DateTimeImmutable $moment): bool
+    public function isValidAt(DateTimeImmutable $moment): bool
     {
         if ($this->validForStart !== null && $moment < $this->validForStart) {
             return false;

@@ -6,6 +6,7 @@ namespace K2gl\Sigstore;
 
 use K2gl\Sigstore\Internal\Pem;
 use K2gl\Sigstore\Internal\TrustRootJson;
+use DateTimeImmutable;
 
 /**
  * A transparency log (Rekor) instance from the trusted root: its log id (the
@@ -17,10 +18,9 @@ final class TransparencyLogInstance
     public function __construct(
         public readonly string $logId,
         public readonly string $publicKeyPem,
-        public readonly ?\DateTimeImmutable $validForStart = null,
-        public readonly ?\DateTimeImmutable $validForEnd = null,
-    ) {
-    }
+        public readonly ?DateTimeImmutable $validForStart = null,
+        public readonly ?DateTimeImmutable $validForEnd = null,
+    ) {}
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self
@@ -47,7 +47,7 @@ final class TransparencyLogInstance
      * absent bound is treated as open, so a log without a validFor is always
      * considered valid.
      */
-    public function isValidAt(\DateTimeImmutable $moment): bool
+    public function isValidAt(DateTimeImmutable $moment): bool
     {
         if ($this->validForStart !== null && $moment < $this->validForStart) {
             return false;

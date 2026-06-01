@@ -6,6 +6,7 @@ namespace K2gl\Sigstore\Internal;
 
 use K2gl\Dsse\Verifier;
 use K2gl\Sigstore\Exception\VerificationFailedException;
+use OpenSSLAsymmetricKey;
 
 /**
  * A {@see Verifier} backed by ext-openssl, for the schemes openssl_verify
@@ -19,7 +20,7 @@ use K2gl\Sigstore\Exception\VerificationFailedException;
  */
 final class OpensslVerifier implements Verifier
 {
-    private \OpenSSLAsymmetricKey $key;
+    private OpenSSLAsymmetricKey $key;
 
     public function __construct(string $publicKeyPem, private readonly int $algorithm)
     {

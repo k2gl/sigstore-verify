@@ -10,6 +10,7 @@ use K2gl\Sigstore\InclusionProof;
 use K2gl\Sigstore\TlogEntry;
 use K2gl\Sigstore\TransparencyLogInstance;
 use K2gl\Sigstore\TrustedRoot;
+use JsonException;
 
 /**
  * Verifies a Rekor transparency-log entry, offline, against the trusted root:
@@ -54,7 +55,7 @@ final class RekorVerifier
             $proven = true;
         }
 
-        if (!$proven) {
+        if (! $proven) {
             throw new VerificationFailedException(
                 'Transparency log entry has neither an inclusion promise nor an inclusion proof.'
             );
@@ -80,7 +81,7 @@ final class RekorVerifier
             publicKeyPem: $log->publicKeyPem,
         );
 
-        if (!$valid) {
+        if (! $valid) {
             throw new VerificationFailedException('Rekor signed entry timestamp is invalid.');
         }
     }
@@ -97,13 +98,13 @@ final class RekorVerifier
             proof: $proof->hashes,
         );
 
-        if (!hash_equals($proof->rootHash, $computedRoot)) {
+        if (! hash_equals($proof->rootHash, $computedRoot)) {
             throw new VerificationFailedException('Merkle inclusion proof does not reproduce the log root.');
         }
 
         $checkpoint = $proof->checkpoint;
 
-        if (!hash_equals($proof->rootHash, $checkpoint->rootHash()) || $checkpoint->treeSize() !== $proof->treeSize) {
+        if (! hash_equals($proof->rootHash, $checkpoint->rootHash()) || $checkpoint->treeSize() !== $proof->treeSize) {
             throw new VerificationFailedException('Checkpoint does not match the inclusion proof.');
         }
 
@@ -130,7 +131,7 @@ final class RekorVerifier
     {
         $recorded = $this->bodyHash($entry);
 
-        if (!hash_equals(strtolower($expectedHashHex), strtolower($recorded))) {
+        if (! hash_equals(strtolower($expectedHashHex), strtolower($recorded))) {
             throw new VerificationFailedException(
                 'Transparency log entry hash does not match the bundle content.'
             );
@@ -142,11 +143,11 @@ final class RekorVerifier
         try {
             /** @var mixed $body */
             $body = json_decode($entry->canonicalizedBody, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException $e) {
+        } catch (JsonException $e) {
             throw new VerificationFailedException('Rekor entry body is not valid JSON.', previous: $e);
         }
 
-        if (!is_array($body)) {
+        if (! is_array($body)) {
             throw new VerificationFailedException('Rekor entry body is not a JSON object.');
         }
 
@@ -159,7 +160,7 @@ final class RekorVerifier
             ),
         };
 
-        if (!is_string($hash) || $hash === '') {
+        if (! is_string($hash) || $hash === '') {
             throw new VerificationFailedException('Rekor entry body has no hash to bind.');
         }
 
@@ -170,7 +171,7 @@ final class RekorVerifier
     private static function dig(mixed $value, string ...$keys): mixed
     {
         foreach ($keys as $key) {
-            if (!is_array($value) || !array_key_exists($key, $value)) {
+            if (! is_array($value) || ! array_key_exists($key, $value)) {
                 return null;
             }
             $value = $value[$key];

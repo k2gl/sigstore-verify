@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\Bundle;
 use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Checkpoint;
@@ -31,6 +29,8 @@ use K2gl\Sigstore\TransparencyLogInstance;
 use K2gl\Sigstore\TrustedRoot;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 /**
  * End-to-end message-signature verification against a real public-good
@@ -99,7 +99,7 @@ final class VerifyArtifactTest extends TestCase
 
     public function testVerifiesRealMessageSignatureBundle(): void
     {
-        (new SigstoreVerifier())->verifyArtifact(
+        (new SigstoreVerifier)->verifyArtifact(
             bundle: $this->bundle(),
             artifact: $this->artifact(),
             trustedRoot: $this->trustedRoot(),
@@ -111,7 +111,7 @@ final class VerifyArtifactTest extends TestCase
 
     public function testVerifyArtifactFromJson(): void
     {
-        (new SigstoreVerifier())->verifyArtifactFromJson(
+        (new SigstoreVerifier)->verifyArtifactFromJson(
             bundleJson: self::fixture('conformance-msgsig-v0.3.json'),
             artifact: $this->artifact(),
             trustedRootJson: self::fixture('trusted-root-public-good.json'),
@@ -124,7 +124,7 @@ final class VerifyArtifactTest extends TestCase
     public function testRejectsWrongArtifact(): void
     {
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verifyArtifact(
+        (new SigstoreVerifier)->verifyArtifact(
             bundle: $this->bundle(),
             artifact: $this->artifact() . 'tampered',
             trustedRoot: $this->trustedRoot(),
@@ -135,7 +135,7 @@ final class VerifyArtifactTest extends TestCase
     public function testRejectsWrongIdentity(): void
     {
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verifyArtifact(
+        (new SigstoreVerifier)->verifyArtifact(
             bundle: $this->bundle(),
             artifact: $this->artifact(),
             trustedRoot: $this->trustedRoot(),
@@ -154,7 +154,7 @@ final class VerifyArtifactTest extends TestCase
         $raw['messageSignature']['signature'] = base64_encode($signature);
 
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verifyArtifact(
+        (new SigstoreVerifier)->verifyArtifact(
             bundle: Bundle::fromArray($raw),
             artifact: $this->artifact(),
             trustedRoot: $this->trustedRoot(),
@@ -165,7 +165,7 @@ final class VerifyArtifactTest extends TestCase
     public function testVerifyArtifactRejectsDsseBundle(): void
     {
         $this->expectException(UnsupportedBundleException::class);
-        (new SigstoreVerifier())->verifyArtifact(
+        (new SigstoreVerifier)->verifyArtifact(
             bundle: Bundle::fromJson(self::fixture('bundle-provenance.json')),
             artifact: $this->artifact(),
             trustedRoot: $this->trustedRoot(),

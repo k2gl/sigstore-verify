@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\Internal\OpensslVerifier;
@@ -16,6 +14,8 @@ use phpseclib3\Crypt\RSA;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 /**
  * The signing-key abstraction, exercised with freshly generated keys of every

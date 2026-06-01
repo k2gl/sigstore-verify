@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\Internal\Asn1;
@@ -19,6 +17,9 @@ use K2gl\Sigstore\TransparencyLogInstance;
 use K2gl\Sigstore\TrustedRoot;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use DateTimeImmutable;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 /**
  * Certificate-transparency verification against a real public-good Fulcio leaf
@@ -43,7 +44,7 @@ final class SctVerifierTest extends TestCase
     {
         $leaf = $this->leaf();
 
-        (new SctVerifier())->verify($leaf, $this->issuerFor($leaf), $this->trustedRoot()->ctLogs);
+        (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $this->trustedRoot()->ctLogs);
 
         fact($leaf->embeddedSctListBytes() !== null)->true();
     }
@@ -64,7 +65,7 @@ final class SctVerifierTest extends TestCase
         $leaf = $this->leaf();
 
         $this->expectException(VerificationFailedException::class);
-        (new SctVerifier())->verify($leaf, $this->issuerFor($leaf), $logs);
+        (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $logs);
     }
 
     public function testRejectsWrongCtLogKey(): void
@@ -84,13 +85,13 @@ final class SctVerifierTest extends TestCase
         $leaf = $this->leaf();
 
         $this->expectException(VerificationFailedException::class);
-        (new SctVerifier())->verify($leaf, $this->issuerFor($leaf), $logs);
+        (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $logs);
     }
 
     public function testRejectsSctOutsideLogWindow(): void
     {
         // The SCT timestamp falls outside every log's operating window.
-        $past = new \DateTimeImmutable('2000-01-01T00:00:00Z');
+        $past = new DateTimeImmutable('2000-01-01T00:00:00Z');
         $logs = array_map(
             static fn (TransparencyLogInstance $log): TransparencyLogInstance => new TransparencyLogInstance(
                 logId: $log->logId,
@@ -104,7 +105,7 @@ final class SctVerifierTest extends TestCase
         $leaf = $this->leaf();
 
         $this->expectException(VerificationFailedException::class);
-        (new SctVerifier())->verify($leaf, $this->issuerFor($leaf), $logs);
+        (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $logs);
     }
 
     public function testRejectsCertificateWithoutEmbeddedSct(): void
@@ -113,7 +114,7 @@ final class SctVerifierTest extends TestCase
         $intermediate = $this->issuerFor($this->leaf());
 
         $this->expectException(VerificationFailedException::class);
-        (new SctVerifier())->verify($intermediate, $intermediate, $this->trustedRoot()->ctLogs);
+        (new SctVerifier)->verify($intermediate, $intermediate, $this->trustedRoot()->ctLogs);
     }
 
     public function testEncodeLengthUsesDefiniteForm(): void

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\Bundle;
 use K2gl\Sigstore\Exception\InvalidBundleException;
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
@@ -14,6 +12,8 @@ use K2gl\Sigstore\MessageSignature;
 use K2gl\Sigstore\TlogEntry;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 #[CoversClass(Bundle::class)]
 #[CoversClass(MessageSignature::class)]

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace K2gl\Sigstore;
 
 use K2gl\Sigstore\Exception\VerificationFailedException;
+use InvalidArgumentException;
 
 /**
  * The identity a caller requires of the signer: the expected subject
@@ -22,7 +23,7 @@ final class IdentityPolicy
         public readonly string $issuer,
     ) {
         if ($san === '' || $issuer === '') {
-            throw new \InvalidArgumentException('Identity policy requires a non-empty SAN and issuer.');
+            throw new InvalidArgumentException('Identity policy requires a non-empty SAN and issuer.');
         }
     }
 
@@ -40,7 +41,7 @@ final class IdentityPolicy
             ));
         }
 
-        if (!in_array($this->san, $subjectAlternativeNames, true)) {
+        if (! in_array($this->san, $subjectAlternativeNames, true)) {
             throw new VerificationFailedException(sprintf(
                 'Certificate identity does not include the expected SAN "%s".',
                 $this->san,

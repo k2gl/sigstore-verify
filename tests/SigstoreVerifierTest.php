@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\Bundle;
 use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
@@ -29,6 +27,8 @@ use K2gl\Sigstore\TransparencyLogInstance;
 use K2gl\Sigstore\TrustedRoot;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 /**
  * End-to-end verification against a real public-good Sigstore bundle (a SLSA
@@ -82,7 +82,7 @@ final class SigstoreVerifierTest extends TestCase
 
     public function testVerifiesRealProvenanceBundle(): void
     {
-        $envelope = (new SigstoreVerifier())->verify(
+        $envelope = (new SigstoreVerifier)->verify(
             bundle: $this->bundle(),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
@@ -98,7 +98,7 @@ final class SigstoreVerifierTest extends TestCase
     public function testRejectsWrongSan(): void
     {
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verify(
+        (new SigstoreVerifier)->verify(
             bundle: $this->bundle(),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy('https://example.com/not-the-signer', self::ISSUER),
@@ -108,7 +108,7 @@ final class SigstoreVerifierTest extends TestCase
     public function testRejectsWrongIssuer(): void
     {
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verify(
+        (new SigstoreVerifier)->verify(
             bundle: $this->bundle(),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, 'https://accounts.google.com'),
@@ -125,7 +125,7 @@ final class SigstoreVerifierTest extends TestCase
         );
 
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verify(
+        (new SigstoreVerifier)->verify(
             bundle: Bundle::fromArray($raw),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
@@ -140,7 +140,7 @@ final class SigstoreVerifierTest extends TestCase
         $onlyOldCa = new TrustedRoot([$root->certificateAuthorities[0]], $root->transparencyLogs);
 
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verify(
+        (new SigstoreVerifier)->verify(
             bundle: $this->bundle(),
             trustedRoot: $onlyOldCa,
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
@@ -156,7 +156,7 @@ final class SigstoreVerifierTest extends TestCase
         $rerooted = new TrustedRoot($root->certificateAuthorities, [$stranger]);
 
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verify(
+        (new SigstoreVerifier)->verify(
             bundle: $this->bundle(),
             trustedRoot: $rerooted,
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
@@ -168,7 +168,7 @@ final class SigstoreVerifierTest extends TestCase
         // verify() is for DSSE attestations; a message-signature bundle must go
         // through verifyArtifact().
         $this->expectException(UnsupportedBundleException::class);
-        (new SigstoreVerifier())->verify(
+        (new SigstoreVerifier)->verify(
             bundle: Bundle::fromJson($this->fixture('conformance-msgsig-v0.3.json')),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
@@ -177,7 +177,7 @@ final class SigstoreVerifierTest extends TestCase
 
     public function testVerifyFromJsonAcceptsTheRealBundle(): void
     {
-        $envelope = (new SigstoreVerifier())->verifyFromJson(
+        $envelope = (new SigstoreVerifier)->verifyFromJson(
             bundleJson: $this->fixture('bundle-provenance.json'),
             trustedRootJson: $this->fixture('trusted-root-public-good.json'),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
@@ -198,7 +198,7 @@ final class SigstoreVerifierTest extends TestCase
         $entry['inclusionPromise']['signedEntryTimestamp'] = base64_encode($set);
 
         $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier())->verify(
+        (new SigstoreVerifier)->verify(
             bundle: Bundle::fromArray($raw),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
@@ -212,7 +212,7 @@ final class SigstoreVerifierTest extends TestCase
         $raw['dsseEnvelope']['payloadType'] = 'application/vnd.dev.cosign.simplesigning.v1+json';
 
         $this->expectException(UnsupportedBundleException::class);
-        (new SigstoreVerifier())->verify(
+        (new SigstoreVerifier)->verify(
             bundle: Bundle::fromArray($raw),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),

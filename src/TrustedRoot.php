@@ -48,7 +48,7 @@ final class TrustedRoot
         $authorities = [];
 
         foreach (TrustRootJson::list($data, 'certificateAuthorities', 'certificate_authorities') as $entry) {
-            if (!is_array($entry)) {
+            if (! is_array($entry)) {
                 throw new TrustRootException('Certificate authority entry must be an object.');
             }
             /** @var array<string, mixed> $entry */
@@ -58,7 +58,7 @@ final class TrustedRoot
         $logs = [];
 
         foreach (TrustRootJson::list($data, 'tlogs') as $entry) {
-            if (!is_array($entry)) {
+            if (! is_array($entry)) {
                 throw new TrustRootException('Transparency log entry must be an object.');
             }
             /** @var array<string, mixed> $entry */
@@ -79,13 +79,13 @@ final class TrustedRoot
     {
         $raw = $data['ctlogs'] ?? $data['ctLogs'] ?? $data['ct_logs'] ?? null;
 
-        if (!is_array($raw) || !array_is_list($raw)) {
+        if (! is_array($raw) || ! array_is_list($raw)) {
             return [];
         }
         $logs = [];
 
         foreach ($raw as $entry) {
-            if (!is_array($entry)) {
+            if (! is_array($entry)) {
                 throw new TrustRootException('Certificate transparency log entry must be an object.');
             }
             /** @var array<string, mixed> $entry */
@@ -106,13 +106,13 @@ final class TrustedRoot
     {
         $raw = $data['timestampAuthorities'] ?? $data['timestamp_authorities'] ?? null;
 
-        if (!is_array($raw) || !array_is_list($raw)) {
+        if (! is_array($raw) || ! array_is_list($raw)) {
             return [];
         }
         $authorities = [];
 
         foreach ($raw as $entry) {
-            if (!is_array($entry)) {
+            if (! is_array($entry)) {
                 throw new TrustRootException('Timestamp authority entry must be an object.');
             }
             /** @var array<string, mixed> $entry */

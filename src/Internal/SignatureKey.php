@@ -12,6 +12,7 @@ use phpseclib3\Crypt\Common\PublicKey;
 use phpseclib3\Crypt\EC;
 use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Crypt\RSA;
+use Throwable;
 
 /**
  * The public key that signed a bundle's content, resolved to the one signature
@@ -35,19 +36,18 @@ final class SignatureKey implements Verifier
         private readonly Verifier $verifier,
         private readonly string $digestAlgorithm,
         private readonly bool $ed25519,
-    ) {
-    }
+    ) {}
 
     /** Resolve a PEM-encoded public key supplied out of band (public-key bundles). */
     public static function fromPem(string $pem): self
     {
         try {
             $key = PublicKeyLoader::load($pem);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             throw new VerificationFailedException('Unable to load the supplied public key.', previous: $e);
         }
 
-        if (!$key instanceof PublicKey) {
+        if (! $key instanceof PublicKey) {
             throw new VerificationFailedException('The supplied key is not a public key.');
         }
 
@@ -79,7 +79,7 @@ final class SignatureKey implements Verifier
         if ($curve === 'Ed25519') {
             $raw = $key->toString('libsodium');
 
-            if (!is_string($raw) || $raw === '') {
+            if (! is_string($raw) || $raw === '') {
                 throw new VerificationFailedException('Unable to extract the Ed25519 public key.');
             }
 
@@ -110,7 +110,7 @@ final class SignatureKey implements Verifier
      */
     private static function pem(string|array $encoded): string
     {
-        if (!is_string($encoded)) {
+        if (! is_string($encoded)) {
             throw new VerificationFailedException('Unable to encode the public key.');
         }
 

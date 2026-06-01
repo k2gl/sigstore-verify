@@ -69,7 +69,7 @@ final class SctVerifier
         }
         $log = $this->findLog($sct->logId, $ctLogs);
 
-        if ($log === null || !$log->isValidAt($sct->time())) {
+        if ($log === null || ! $log->isValidAt($sct->time())) {
             return false;
         }
 

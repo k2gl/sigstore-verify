@@ -22,8 +22,7 @@ final class TlogEntry
         public readonly ?string $signedEntryTimestamp,
         public readonly ?InclusionProof $inclusionProof,
         public readonly string $canonicalizedBody,
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self

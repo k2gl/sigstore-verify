@@ -6,6 +6,7 @@ namespace K2gl\Sigstore\Internal;
 
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\TrustedRoot;
+use DateTimeImmutable;
 
 /**
  * Verifies that a leaf certificate chains to a trusted CA at the signing time.
@@ -32,7 +33,7 @@ final class CertificateChainVerifier
     public function verify(
         Certificate $leaf,
         TrustedRoot $trustedRoot,
-        \DateTimeImmutable $signingTime,
+        DateTimeImmutable $signingTime,
     ): array {
         foreach ($trustedRoot->certificateAuthorities as $authority) {
             $chain = array_merge([$leaf], $authority->certificates());
@@ -53,7 +54,7 @@ final class CertificateChainVerifier
      *
      * @param list<Certificate> $chain
      */
-    public function isValidChain(array $chain, \DateTimeImmutable $signingTime): bool
+    public function isValidChain(array $chain, DateTimeImmutable $signingTime): bool
     {
         $last = count($chain) - 1;
 
@@ -62,11 +63,11 @@ final class CertificateChainVerifier
         }
 
         for ($i = 0; $i < $last; $i++) {
-            if (!$chain[$i]->isValidAt($signingTime)) {
+            if (! $chain[$i]->isValidAt($signingTime)) {
                 return false;
             }
 
-            if (!$chain[$i]->isSignedBy($chain[$i + 1])) {
+            if (! $chain[$i]->isSignedBy($chain[$i + 1])) {
                 return false;
             }
         }

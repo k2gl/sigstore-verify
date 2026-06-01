@@ -7,6 +7,7 @@ namespace K2gl\Sigstore\Internal;
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use phpseclib3\Crypt\Common\PublicKey;
 use phpseclib3\File\X509;
+use DateTimeImmutable;
 
 /**
  * A thin wrapper over phpseclib's X.509 parser for the few things the verifier
@@ -30,14 +31,13 @@ final class Certificate
     private function __construct(
         private readonly X509 $x509,
         private readonly string $der,
-    ) {
-    }
+    ) {}
 
     public static function fromDer(string $der): self
     {
-        $x509 = new X509();
+        $x509 = new X509;
 
-        if (!is_array($x509->loadX509($der))) {
+        if (! is_array($x509->loadX509($der))) {
             throw new VerificationFailedException('Unable to parse an X.509 certificate.');
         }
 
@@ -65,14 +65,14 @@ final class Certificate
     {
         $key = $this->x509->getPublicKey();
 
-        if (!$key instanceof PublicKey) {
+        if (! $key instanceof PublicKey) {
             throw new VerificationFailedException('Certificate has no usable public key.');
         }
 
         return $key;
     }
 
-    public function isValidAt(\DateTimeImmutable $moment): bool
+    public function isValidAt(DateTimeImmutable $moment): bool
     {
         return $this->x509->validateDate($moment) === true;
     }
@@ -80,9 +80,9 @@ final class Certificate
     /** True if this certificate's signature verifies under the issuer's key. */
     public function isSignedBy(self $issuer): bool
     {
-        $subject = new X509();
+        $subject = new X509;
 
-        if (!is_array($subject->loadX509($this->der))) {
+        if (! is_array($subject->loadX509($this->der))) {
             return false;
         }
         $subject->loadCA($issuer->pemCertificate());
@@ -105,13 +105,13 @@ final class Certificate
     {
         $extension = $this->x509->getExtension('id-ce-subjectAltName');
 
-        if (!is_array($extension)) {
+        if (! is_array($extension)) {
             return [];
         }
         $names = [];
 
         foreach ($extension as $entry) {
-            if (!is_array($entry)) {
+            if (! is_array($entry)) {
                 continue;
             }
 

@@ -8,6 +8,7 @@ use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\IdentityPolicy;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use InvalidArgumentException;
 
 #[CoversClass(IdentityPolicy::class)]
 #[CoversClass(VerificationFailedException::class)]
@@ -43,7 +44,7 @@ final class IdentityPolicyTest extends TestCase
 
     public function testConstructorRejectsEmptyValues(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         new IdentityPolicy('', self::ISSUER);
     }
 }

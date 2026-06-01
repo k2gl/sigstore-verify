@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Internal;
 
+use DateTimeImmutable;
+
 /**
  * The fields {@see Rfc3161Verifier} needs from a parsed RFC 3161 time-stamp
  * token (a CMS SignedData wrapping a TSTInfo), produced by {@see Cms::parse()}.
@@ -32,7 +34,6 @@ final class TimeStampToken
         /** The messageImprint hashed-message bytes: the digest the TSA timestamped. */
         public readonly string $messageImprintHash,
         /** The TSTInfo genTime: the asserted signing time. */
-        public readonly \DateTimeImmutable $genTime,
-    ) {
-    }
+        public readonly DateTimeImmutable $genTime,
+    ) {}
 }

@@ -18,8 +18,7 @@ final class Rfc3161Timestamp
     /** @param string $signedTimestamp the DER-encoded time-stamp token */
     public function __construct(
         public readonly string $signedTimestamp,
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self

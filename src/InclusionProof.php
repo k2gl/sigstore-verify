@@ -20,8 +20,7 @@ final class InclusionProof
         public readonly string $rootHash,
         public readonly array $hashes,
         public readonly Checkpoint $checkpoint,
-    ) {
-    }
+    ) {}
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self
@@ -29,7 +28,7 @@ final class InclusionProof
         $hashes = [];
 
         foreach (Json::list($data, 'hashes') as $hash) {
-            if (!is_string($hash)) {
+            if (! is_string($hash)) {
                 throw new Exception\InvalidBundleException('Inclusion proof hash must be a string.');
             }
             $decoded = base64_decode($hash, true);

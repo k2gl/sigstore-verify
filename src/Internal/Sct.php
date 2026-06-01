@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace K2gl\Sigstore\Internal;
 
 use K2gl\Sigstore\Exception\VerificationFailedException;
+use DateTimeImmutable;
 
 /**
  * One Signed Certificate Timestamp, parsed from a leaf certificate's embedded
@@ -27,13 +28,12 @@ final class Sct
         public readonly int $hashAlgorithm,
         public readonly int $signatureAlgorithm,
         public readonly string $signature,
-    ) {
-    }
+    ) {}
 
     /** The SCT timestamp (milliseconds since the epoch) as a point in time. */
-    public function time(): \DateTimeImmutable
+    public function time(): DateTimeImmutable
     {
-        return (new \DateTimeImmutable())->setTimestamp(intdiv($this->timestamp, 1000));
+        return (new DateTimeImmutable)->setTimestamp(intdiv($this->timestamp, 1000));
     }
 
     /**

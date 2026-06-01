@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Tests;
 
-use function K2gl\PHPUnitFluentAssertions\fact;
-
 use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Checkpoint;
 use K2gl\Sigstore\Exception\VerificationFailedException;
@@ -18,6 +16,9 @@ use K2gl\Sigstore\TransparencyLogInstance;
 use K2gl\Sigstore\TrustedRoot;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use OpenSSLAsymmetricKey;
+
+use function K2gl\PHPUnitFluentAssertions\fact;
 
 /**
  * Exercises the inclusion-proof path of {@see RekorVerifier} hermetically: a
@@ -40,7 +41,7 @@ final class RekorInclusionProofTest extends TestCase
 {
     private const PAYLOAD = 'the-attestation-payload';
 
-    private \OpenSSLAsymmetricKey $logKey;
+    private OpenSSLAsymmetricKey $logKey;
     private string $logId;
     private TrustedRoot $trustedRoot;
     private string $canonicalBody;
@@ -49,7 +50,7 @@ final class RekorInclusionProofTest extends TestCase
     protected function setUp(): void
     {
         $key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
-        fact($key)->instanceOf(\OpenSSLAsymmetricKey::class);
+        fact($key)->instanceOf(OpenSSLAsymmetricKey::class);
         $this->logKey = $key;
 
         $details = openssl_pkey_get_details($key);
@@ -105,7 +106,7 @@ final class RekorInclusionProofTest extends TestCase
 
     public function testVerifiesInclusionProofPath(): void
     {
-        (new RekorVerifier())->verify(
+        (new RekorVerifier)->verify(
             entry: $this->entry($this->rootHash),
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
@@ -117,7 +118,7 @@ final class RekorInclusionProofTest extends TestCase
     {
         $wrongRoot = strrev($this->rootHash);
         $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier())->verify(
+        (new RekorVerifier)->verify(
             entry: $this->entry($wrongRoot),
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
@@ -127,7 +128,7 @@ final class RekorInclusionProofTest extends TestCase
     public function testRejectsPayloadBindingMismatch(): void
     {
         $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier())->verify(
+        (new RekorVerifier)->verify(
             entry: $this->entry($this->rootHash),
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', 'a-different-payload'),
@@ -138,7 +139,7 @@ final class RekorInclusionProofTest extends TestCase
     {
         // A trusted root whose log key is unrelated to the checkpoint signer.
         $other = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
-        fact($other)->instanceOf(\OpenSSLAsymmetricKey::class);
+        fact($other)->instanceOf(OpenSSLAsymmetricKey::class);
         $details = openssl_pkey_get_details($other);
         fact($details)->isArray();
         $foreignRoot = new TrustedRoot(
@@ -147,7 +148,7 @@ final class RekorInclusionProofTest extends TestCase
         );
 
         $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier())->verify(
+        (new RekorVerifier)->verify(
             entry: $this->entry($this->rootHash),
             trustedRoot: $foreignRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),

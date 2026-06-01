@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace K2gl\Sigstore\Internal;
 
 use K2gl\Sigstore\Exception\InvalidBundleException;
+use JsonException;
 
 /**
  * Small, strict JSON field accessors for parsing Sigstore bundles. Every getter
@@ -24,11 +25,11 @@ final class Json
         try {
             /** @var mixed $data */
             $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException $e) {
+        } catch (JsonException $e) {
             throw new InvalidBundleException('Bundle is not valid JSON: ' . $e->getMessage(), previous: $e);
         }
 
-        if (!is_array($data) || array_is_list($data)) {
+        if (! is_array($data) || array_is_list($data)) {
             throw new InvalidBundleException('Bundle must be a JSON object.');
         }
 
@@ -41,7 +42,7 @@ final class Json
     {
         $value = $data[$key] ?? null;
 
-        if (!is_string($value) || $value === '') {
+        if (! is_string($value) || $value === '') {
             throw new InvalidBundleException(sprintf('Missing or empty string field "%s".', $key));
         }
 
@@ -71,7 +72,7 @@ final class Json
     {
         $value = $data[$key] ?? null;
 
-        if (!is_array($value) || array_is_list($value) && $value !== []) {
+        if (! is_array($value) || array_is_list($value) && $value !== []) {
             throw new InvalidBundleException(sprintf('Field "%s" must be a JSON object.', $key));
         }
 
@@ -87,7 +88,7 @@ final class Json
     {
         $value = $data[$key] ?? null;
 
-        if (!is_array($value) || !array_is_list($value)) {
+        if (! is_array($value) || ! array_is_list($value)) {
             throw new InvalidBundleException(sprintf('Field "%s" must be a JSON array.', $key));
         }
 
@@ -103,7 +104,7 @@ final class Json
     {
         $value = $data[$key] ?? null;
 
-        if (!is_string($value) || $value === '') {
+        if (! is_string($value) || $value === '') {
             throw new InvalidBundleException(sprintf('Missing or empty base64 field "%s".', $key));
         }
         $decoded = base64_decode($value, true);
