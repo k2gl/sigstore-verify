@@ -56,19 +56,33 @@ and [`k2gl/dsse`](https://github.com/k2gl/dsse).
 
 ## The trusted root
 
-Verification runs against a Sigstore `trusted_root.json` that **you supply**. This package
-deliberately does not bundle a trust snapshot or fetch one over TUF: a stale or substituted
-trust root would silently undermine every verification, so keeping it current is the
-caller's responsibility.
+Verification runs against a Sigstore `trusted_root.json`. You can supply it three ways.
 
-Obtain one with the Sigstore CLI:
+**Supply it yourself** with `TrustedRoot::fromJson()`. Obtain the JSON with the Sigstore CLI
+and keep it current — a stale or substituted trust root would silently undermine every
+verification:
 
 ```bash
 # Public-good (default) instance:
 cosign trusted-root create > trusted_root.json
 ```
 
-or take the trusted root distributed via the Sigstore TUF root. Refresh it periodically.
+**Resolve it over TUF** with `TrustedRoot::fromTuf()`, given a `K2gl\Tuf\Updater` you build.
+The TUF client refreshes the metadata and verifies the `trusted_root.json` target's length and
+hashes before it is parsed, so the repository keeps the root current under its own rotation
+rules. The verifier core stays offline — the network is reached only through the updater's
+fetcher.
+
+**For the public-good instance**, `TrustedRoot::fromSigstorePublicGood()` is the convenience
+over `fromTuf()`: it points an updater at `tuf-repo-cdn.sigstore.dev`, using a bundled
+`root.json` as the trust-on-first-use anchor that TUF rotates forward.
+
+```php
+use K2gl\Sigstore\TrustedRoot;
+
+// Fetches and verifies the trusted root over TUF (opt-in network):
+$trustedRoot = TrustedRoot::fromSigstorePublicGood();
+```
 
 ## Usage
 
@@ -196,10 +210,11 @@ keyless bundles) the certificate's embedded **SCT** against the trusted root's
 of scope and are rejected with `UnsupportedBundleException` rather than skipped:
 
 - Ed25519 **message** signatures (cosign signs the digest rather than the artifact, so the
-  scheme is ambiguous), and RSASSA-PSS signatures;
-- TUF-based trust-root fetching and auto-refresh.
+  scheme is ambiguous), and RSASSA-PSS signatures.
 
-These are the planned next steps — each a fail-closed addition in a later release.
+The trusted root can be resolved over TUF — supply it yourself with `TrustedRoot::fromJson()`,
+or fetch and refresh it with `TrustedRoot::fromTuf()` / `TrustedRoot::fromSigstorePublicGood()`
+(see [The trusted root](#the-trusted-root)).
 
 ## Exceptions
 

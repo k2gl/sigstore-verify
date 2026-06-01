@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.0
+
+TUF trusted root.
+
+- **`TrustedRoot::fromTuf()`** — resolve the trusted root from a TUF repository through a
+  caller-built `K2gl\Tuf\Updater`: the updater refreshes the top-level metadata, the
+  `trusted_root.json` target's length and hashes are verified by the TUF client, and the bytes
+  are parsed as before. The target path is overridable. Fail-closed — a TUF verification failure
+  (rollback, expiry, threshold, length or hash mismatch) throws a `K2gl\Tuf\Exception\TufException`,
+  and a repository that does not publish the target throws `TrustRootException`.
+- **`TrustedRoot::fromSigstorePublicGood()`** — the convenience over `fromTuf()` for the public
+  Sigstore instance: it points an `Updater` at `tuf-repo-cdn.sigstore.dev` using a bundled
+  `root.json` as the trust-on-first-use anchor (TUF rotates it forward from there). The fetcher
+  defaults to `K2gl\Tuf\HttpFetcher`; pass your own to control transport, and a `referenceTime`
+  to evaluate metadata expiry at a fixed instant.
+
+The verifier core remains offline and reaches the network only through the TUF fetcher, which the
+caller can replace. Existing `fromJson()` and all `verify*` signatures are unchanged. Adds a
+`k2gl/tuf` dependency. The TUF path is exercised offline against a vendored real Sigstore
+public-good snapshot and a self-signed synthetic repository.
+
 ## 0.5.0
 
 Public-key bundles and multi-algorithm signing keys.
