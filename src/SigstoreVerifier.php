@@ -11,28 +11,31 @@ use K2gl\Sigstore\Exception\UnsupportedBundleException;
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\Internal\Certificate;
 use K2gl\Sigstore\Internal\CertificateChainVerifier;
-use K2gl\Sigstore\Internal\CertificateKeyVerifier;
-use K2gl\Sigstore\Internal\Ecdsa;
 use K2gl\Sigstore\Internal\RekorVerifier;
 use K2gl\Sigstore\Internal\Rfc3161Verifier;
 use K2gl\Sigstore\Internal\SctVerifier;
+use K2gl\Sigstore\Internal\SignatureKey;
 
 /**
  * Verifies a Sigstore bundle end to end, offline, against a caller-supplied
- * trusted root and identity policy.
+ * trusted root.
  *
- *  - {@see verify()} handles DSSE-attestation bundles and returns the verified
- *    in-toto {@see Envelope}.
- *  - {@see verifyArtifact()} handles message-signature bundles, verifying the
- *    signature against the artifact you supply.
+ *  - {@see verify()} / {@see verifyArtifact()} handle keyless bundles, whose
+ *    signing identity is a Fulcio certificate, against an {@see IdentityPolicy}.
+ *  - {@see verifyWithPublicKey()} / {@see verifyArtifactWithPublicKey()} handle
+ *    public-key bundles, whose signing key the caller supplies out of band.
+ *
+ * The signing key may be ECDSA over NIST P-256/P-384/P-521, RSA (PKCS#1 v1.5),
+ * or — for DSSE — Ed25519; the scheme is resolved from the key ({@see SignatureKey}).
  *
  * The pipeline is fail-closed — every step must pass or it throws a
  * {@see Exception\SigstoreException}: the signing time is established (from a
  * trusted RFC 3161 timestamp when present, otherwise the Rekor integrated
- * time); the leaf certificate chains to a trusted Fulcio CA valid at that time;
- * the signature verifies under the certificate's key; each Rekor entry is
- * proven (signed entry timestamp and/or inclusion proof) and bound to the
- * bundle content; and the certificate identity matches the policy.
+ * time); for a keyless bundle the leaf certificate chains to a trusted Fulcio CA
+ * valid at that time and its embedded SCT is checked; the signature verifies
+ * under the signing key; each Rekor entry is proven (signed entry timestamp
+ * and/or inclusion proof) and bound to the bundle content; and, for a keyless
+ * bundle, the certificate identity matches the policy.
  *
  * For DSSE, the returned Envelope's payload is the authenticated in-toto
  * Statement. The caller decides how to read it — k2gl/in-toto-attestation's
@@ -73,42 +76,19 @@ final class SigstoreVerifier
         );
     }
 
-    /** Verify a DSSE in-toto attestation bundle and return the verified envelope. */
+    /** Verify a keyless DSSE in-toto attestation bundle and return the verified envelope. */
     public function verify(
         Bundle $bundle,
         TrustedRoot $trustedRoot,
         IdentityPolicy $identityPolicy,
     ): Envelope {
-        $envelope = $bundle->dsseEnvelope;
-
-        if ($envelope === null) {
-            throw new UnsupportedBundleException(
-                'Bundle has no DSSE envelope; use verifyArtifact() for message-signature bundles.'
-            );
-        }
-
-        // Scope: this version verifies in-toto attestation envelopes.
-        if ($envelope->payloadType !== Statement::PAYLOAD_TYPE) {
-            throw new UnsupportedBundleException(sprintf(
-                'This version verifies in-toto attestations ("%s") only; got payload type "%s".',
-                Statement::PAYLOAD_TYPE,
-                $envelope->payloadType,
-            ));
-        }
+        $this->requireCertificateBundle($bundle);
+        $envelope = $this->attestationEnvelope($bundle);
 
         $signingTime = $this->signingTime($bundle, $trustedRoot, $this->dsseSignature($envelope));
         $leaf = $this->verifyCertificate($bundle, $trustedRoot, $signingTime);
 
-        // DSSE signature verifies under the certificate key.
-        try {
-            $envelope->verify(new CertificateKeyVerifier($leaf->publicKeyPem()));
-        } catch (DsseException $e) {
-            throw new VerificationFailedException(
-                'DSSE signature does not verify against the certificate public key.',
-                previous: $e,
-            );
-        }
-
+        $this->verifyDsseSignature($envelope, $leaf->signatureKey());
         $this->verifyTransparencyLog($bundle, $trustedRoot, hash('sha256', $envelope->payload));
         $identityPolicy->verify($leaf->subjectAlternativeNames(), $leaf->oidcIssuer());
 
@@ -133,9 +113,9 @@ final class SigstoreVerifier
     }
 
     /**
-     * Verify a message-signature bundle against the artifact it signs. The
-     * artifact bytes must be supplied so the signature and the recorded digest
-     * can be checked. Returns nothing: it throws unless every step passes.
+     * Verify a keyless message-signature bundle against the artifact it signs.
+     * The artifact bytes must be supplied so the signature and the recorded
+     * digest can be checked. Returns nothing: it throws unless every step passes.
      */
     public function verifyArtifact(
         Bundle $bundle,
@@ -143,43 +123,196 @@ final class SigstoreVerifier
         TrustedRoot $trustedRoot,
         IdentityPolicy $identityPolicy,
     ): void {
-        $signature = $bundle->messageSignature;
-
-        if ($signature === null) {
-            throw new UnsupportedBundleException(
-                'Bundle has no message signature; use verify() for DSSE attestations.'
-            );
-        }
-
-        if ($signature->hashAlgorithm !== 'SHA2_256') {
-            throw new UnsupportedBundleException(sprintf(
-                'Only SHA2_256 message digests are supported; got "%s".',
-                $signature->hashAlgorithm,
-            ));
-        }
-
-        if (!hash_equals($signature->messageDigest, hash('sha256', $artifact, true))) {
-            throw new VerificationFailedException('Artifact does not match the bundle message digest.');
-        }
+        $this->requireCertificateBundle($bundle);
+        $signature = $this->messageSignature($bundle);
 
         $signingTime = $this->signingTime($bundle, $trustedRoot, $signature->signature);
         $leaf = $this->verifyCertificate($bundle, $trustedRoot, $signingTime);
 
-        // The signature is ECDSA-over-SHA-256 of the artifact, in DER.
-        $valid = Ecdsa::verifyDer(
-            message: $artifact,
-            derSignature: $signature->signature,
-            publicKeyPem: $leaf->publicKeyPem(),
-        );
+        $this->verifyArtifactSignature($signature, $artifact, $leaf->signatureKey());
+        $this->verifyTransparencyLog($bundle, $trustedRoot, bin2hex($signature->messageDigest));
+        $identityPolicy->verify($leaf->subjectAlternativeNames(), $leaf->oidcIssuer());
+    }
 
-        if (!$valid) {
-            throw new VerificationFailedException(
-                'Message signature does not verify against the certificate public key.'
+    /**
+     * Convenience wrapper of {@see verifyWithPublicKey()} for JSON-string inputs.
+     */
+    public function verifyWithPublicKeyFromJson(
+        string $bundleJson,
+        string $publicKeyPem,
+        string $trustedRootJson,
+        ?string $expectedHint = null,
+    ): Envelope {
+        return $this->verifyWithPublicKey(
+            Bundle::fromJson($bundleJson),
+            $publicKeyPem,
+            TrustedRoot::fromJson($trustedRootJson),
+            $expectedHint,
+        );
+    }
+
+    /**
+     * Verify a public-key DSSE attestation bundle against the PEM-encoded key the
+     * caller trusts out of band, and return the verified envelope. There is no
+     * certificate to chain and no identity policy: trust rests on the supplied
+     * key. When $expectedHint is given, the bundle's key hint must match it.
+     */
+    public function verifyWithPublicKey(
+        Bundle $bundle,
+        string $publicKeyPem,
+        TrustedRoot $trustedRoot,
+        ?string $expectedHint = null,
+    ): Envelope {
+        $this->requirePublicKeyBundle($bundle, $expectedHint);
+        $envelope = $this->attestationEnvelope($bundle);
+
+        $this->signingTime($bundle, $trustedRoot, $this->dsseSignature($envelope));
+        $this->verifyDsseSignature($envelope, SignatureKey::fromPem($publicKeyPem));
+        $this->verifyTransparencyLog($bundle, $trustedRoot, hash('sha256', $envelope->payload));
+
+        return $envelope;
+    }
+
+    /**
+     * Convenience wrapper of {@see verifyArtifactWithPublicKey()} for JSON-string inputs.
+     */
+    public function verifyArtifactWithPublicKeyFromJson(
+        string $bundleJson,
+        string $artifact,
+        string $publicKeyPem,
+        string $trustedRootJson,
+        ?string $expectedHint = null,
+    ): void {
+        $this->verifyArtifactWithPublicKey(
+            Bundle::fromJson($bundleJson),
+            $artifact,
+            $publicKeyPem,
+            TrustedRoot::fromJson($trustedRootJson),
+            $expectedHint,
+        );
+    }
+
+    /**
+     * Verify a public-key message-signature bundle against the artifact it signs
+     * and the PEM-encoded key the caller trusts out of band. Returns nothing: it
+     * throws unless every step passes. When $expectedHint is given, the bundle's
+     * key hint must match it.
+     */
+    public function verifyArtifactWithPublicKey(
+        Bundle $bundle,
+        string $artifact,
+        string $publicKeyPem,
+        TrustedRoot $trustedRoot,
+        ?string $expectedHint = null,
+    ): void {
+        $this->requirePublicKeyBundle($bundle, $expectedHint);
+        $signature = $this->messageSignature($bundle);
+
+        $this->signingTime($bundle, $trustedRoot, $signature->signature);
+        $this->verifyArtifactSignature($signature, $artifact, SignatureKey::fromPem($publicKeyPem));
+        $this->verifyTransparencyLog($bundle, $trustedRoot, bin2hex($signature->messageDigest));
+    }
+
+    /** The bundle's DSSE in-toto attestation envelope, or a rejection if it carries none. */
+    private function attestationEnvelope(Bundle $bundle): Envelope
+    {
+        $envelope = $bundle->dsseEnvelope;
+
+        if ($envelope === null) {
+            throw new UnsupportedBundleException(
+                'Bundle has no DSSE envelope; it is a message-signature bundle, so use an artifact verification method.'
             );
         }
 
-        $this->verifyTransparencyLog($bundle, $trustedRoot, bin2hex($signature->messageDigest));
-        $identityPolicy->verify($leaf->subjectAlternativeNames(), $leaf->oidcIssuer());
+        // Scope: this version verifies in-toto attestation envelopes.
+        if ($envelope->payloadType !== Statement::PAYLOAD_TYPE) {
+            throw new UnsupportedBundleException(sprintf(
+                'This version verifies in-toto attestations ("%s") only; got payload type "%s".',
+                Statement::PAYLOAD_TYPE,
+                $envelope->payloadType,
+            ));
+        }
+
+        return $envelope;
+    }
+
+    /** The bundle's message signature, or a rejection if it carries none. */
+    private function messageSignature(Bundle $bundle): MessageSignature
+    {
+        return $bundle->messageSignature ?? throw new UnsupportedBundleException(
+            'Bundle has no message signature; it is a DSSE attestation, so use a DSSE verification method.'
+        );
+    }
+
+    private function requireCertificateBundle(Bundle $bundle): void
+    {
+        if (!$bundle->hasCertificate()) {
+            throw new UnsupportedBundleException(
+                'This is a public-key bundle; use verifyWithPublicKey() / verifyArtifactWithPublicKey() '
+                . 'and supply the trusted key.'
+            );
+        }
+    }
+
+    private function requirePublicKeyBundle(Bundle $bundle, ?string $expectedHint): void
+    {
+        if ($bundle->hasCertificate()) {
+            throw new UnsupportedBundleException(
+                'This is a keyless (certificate) bundle; use verify() / verifyArtifact() with an identity policy.'
+            );
+        }
+
+        if ($expectedHint !== null
+            && ($bundle->publicKeyHint === null || !hash_equals($expectedHint, $bundle->publicKeyHint))
+        ) {
+            throw new VerificationFailedException('Bundle public-key hint does not match the expected hint.');
+        }
+    }
+
+    /** The DSSE signature verifies under the signing key (over the envelope's PAE). */
+    private function verifyDsseSignature(Envelope $envelope, SignatureKey $key): void
+    {
+        try {
+            $envelope->verify($key);
+        } catch (DsseException $e) {
+            throw new VerificationFailedException(
+                'DSSE signature does not verify against the signing public key.',
+                previous: $e,
+            );
+        }
+    }
+
+    /** The artifact matches the recorded digest and the signature verifies under the signing key. */
+    private function verifyArtifactSignature(
+        MessageSignature $signature,
+        string $artifact,
+        SignatureKey $key,
+    ): void {
+        if ($key->isEd25519()) {
+            throw new UnsupportedBundleException(
+                'Ed25519 message signatures are not supported in this version; use a DSSE bundle for Ed25519.'
+            );
+        }
+
+        $digest = match ($signature->hashAlgorithm) {
+            'SHA2_256' => 'sha256',
+            'SHA2_384' => 'sha384',
+            'SHA2_512' => 'sha512',
+            default => throw new UnsupportedBundleException(sprintf(
+                'Unsupported message-digest algorithm "%s".',
+                $signature->hashAlgorithm,
+            )),
+        };
+
+        if (!hash_equals($signature->messageDigest, hash($digest, $artifact, true))) {
+            throw new VerificationFailedException('Artifact does not match the bundle message digest.');
+        }
+
+        if (!$key->verify($artifact, $signature->signature)) {
+            throw new VerificationFailedException(
+                'Message signature does not verify against the signing public key.'
+            );
+        }
     }
 
     /** Parse the leaf certificate and verify it chains to a trusted Fulcio root at the signing time. */
@@ -188,11 +321,9 @@ final class SigstoreVerifier
         TrustedRoot $trustedRoot,
         \DateTimeImmutable $signingTime,
     ): Certificate {
-        $leaf = Certificate::fromDer($bundle->leafCertificate);
+        $der = $bundle->leafCertificate ?? throw new UnsupportedBundleException('Bundle has no certificate.');
+        $leaf = Certificate::fromDer($der);
 
-        if (!$leaf->isEcdsaP256()) {
-            throw new UnsupportedBundleException('Only ECDSA P-256 Fulcio certificates are supported in this version.');
-        }
         $chain = $this->chainVerifier->verify(
             leaf: $leaf,
             trustedRoot: $trustedRoot,

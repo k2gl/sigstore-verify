@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.5.0
+
+Public-key bundles and multi-algorithm signing keys.
+
+- **Public-key (non-certificate) bundles** — `SigstoreVerifier::verifyWithPublicKey()` and
+  `verifyArtifactWithPublicKey()` (plus their `…FromJson` shorthands) verify a bundle whose
+  signing identity is a public-key reference rather than a Fulcio certificate, as produced by
+  `cosign sign-blob --key` / `cosign attest --key` or a self-managed-key Sigstore. You supply
+  the trusted public key; there is no certificate chain, embedded SCT or identity policy, so
+  trust rests on the key, and the Rekor transparency-log proof is still verified. An optional
+  `expectedHint` requires the bundle's key hint to match. Such bundles were previously
+  rejected at parse time.
+- **Multiple signing-key algorithms** — the content signature is now verified for ECDSA over
+  NIST P-256, P-384 and P-521 (digest by curve), RSA (PKCS#1 v1.5 over SHA-256), and — for
+  DSSE — Ed25519, replacing the previous ECDSA P-256 only restriction. Message-signature
+  bundles accept SHA2_256/384/512 digests accordingly.
+- **`Bundle`** now parses public-key material (`Bundle::isPublicKey()` /
+  `Bundle::hasCertificate()`, with `Bundle::$publicKeyHint`); `Bundle::$leafCertificate` is
+  null for a public-key bundle.
+
+Out of scope and rejected with `UnsupportedBundleException`: Ed25519 **message** signatures
+(cosign signs the digest, not the artifact) and RSASSA-PSS signatures. The keyless methods
+`verify()` / `verifyArtifact()` are unchanged and reject a public-key bundle (and vice versa)
+with a pointer to the right method. Public-good Sigstore issues only ECDSA P-256 Fulcio
+certificates, so the new algorithm and public-key paths are validated with generated
+fixtures rather than captured public-good ones.
+
 ## 0.4.0
 
 Certificate-transparency (SCT) verification.

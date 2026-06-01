@@ -6,7 +6,6 @@ namespace K2gl\Sigstore\Internal;
 
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use phpseclib3\Crypt\Common\PublicKey;
-use phpseclib3\Crypt\EC;
 use phpseclib3\File\X509;
 
 /**
@@ -51,12 +50,15 @@ final class Certificate
         return $this->publicKey()->toString('PKCS8');
     }
 
-    /** True if the certificate carries an ECDSA NIST P-256 (secp256r1) key. */
-    public function isEcdsaP256(): bool
+    /**
+     * The certificate's public key as a {@see SignatureKey}, resolved to the
+     * Sigstore signature scheme for its algorithm. Throws
+     * {@see \K2gl\Sigstore\Exception\UnsupportedBundleException} for a key whose
+     * algorithm this version does not verify.
+     */
+    public function signatureKey(): SignatureKey
     {
-        $key = $this->publicKey();
-
-        return $key instanceof EC && $key->getCurve() === 'secp256r1';
+        return SignatureKey::fromPublicKey($this->publicKey());
     }
 
     private function publicKey(): PublicKey

@@ -91,10 +91,9 @@ final class BundleTest extends TestCase
         Bundle::fromArray(['mediaType' => 'application/json', 'dsseEnvelope' => $this->minimalDsseEnvelope()]);
     }
 
-    public function testRejectsPublicKeyMaterial(): void
+    public function testParsesPublicKeyMaterial(): void
     {
-        $this->expectException(UnsupportedBundleException::class);
-        Bundle::fromArray([
+        $bundle = Bundle::fromArray([
             'mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json',
             'verificationMaterial' => [
                 'publicKey' => ['hint' => 'abc'],
@@ -102,6 +101,26 @@ final class BundleTest extends TestCase
             ],
             'dsseEnvelope' => $this->minimalDsseEnvelope(),
         ]);
+
+        self::assertTrue($bundle->isPublicKey());
+        self::assertFalse($bundle->hasCertificate());
+        self::assertNull($bundle->leafCertificate);
+        self::assertSame('abc', $bundle->publicKeyHint);
+    }
+
+    public function testParsesPublicKeyMaterialWithoutHint(): void
+    {
+        $bundle = Bundle::fromArray([
+            'mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json',
+            'verificationMaterial' => [
+                'publicKey' => [],
+                'tlogEntries' => [$this->minimalTlogEntry()],
+            ],
+            'dsseEnvelope' => $this->minimalDsseEnvelope(),
+        ]);
+
+        self::assertTrue($bundle->isPublicKey());
+        self::assertNull($bundle->publicKeyHint);
     }
 
     public function testRejectsMissingContent(): void

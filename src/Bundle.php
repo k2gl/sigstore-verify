@@ -12,12 +12,11 @@ use K2gl\Sigstore\Internal\Json;
 
 /**
  * A parsed Sigstore bundle (the .sigstore.json produced by cosign, gitsign, npm
- * provenance, etc.): a Fulcio leaf certificate, one or more Rekor
- * transparency-log entries, and exactly one content — a DSSE envelope (an
- * attestation) or a message signature (an artifact signature).
- *
- * Public-key (keyless-without-certificate) bundles are rejected at parse time
- * with {@see UnsupportedBundleException}: this verifier requires a certificate.
+ * provenance, etc.): one or more Rekor transparency-log entries, exactly one
+ * content — a DSSE envelope (an attestation) or a message signature (an artifact
+ * signature) — and a signing identity that is either a Fulcio leaf certificate
+ * (keyless) or a public-key reference (a {@see $publicKeyHint} naming a key the
+ * caller supplies out of band).
  *
  * @see https://github.com/sigstore/protobuf-specs/blob/main/protos/sigstore_bundle.proto
  */
@@ -26,16 +25,19 @@ final class Bundle
     private const MEDIA_TYPE_PREFIX = 'application/vnd.dev.sigstore.bundle';
 
     /**
+     * @param ?string                $leafCertificate   DER Fulcio leaf certificate, or null for a public-key bundle
      * @param list<TlogEntry>        $tlogEntries
      * @param list<Rfc3161Timestamp> $rfc3161Timestamps
+     * @param ?string                $publicKeyHint     key hint of a public-key bundle, or null for a certificate bundle
      */
     public function __construct(
         public readonly string $mediaType,
-        public readonly string $leafCertificate,
+        public readonly ?string $leafCertificate,
         public readonly array $tlogEntries,
         public readonly ?Envelope $dsseEnvelope = null,
         public readonly ?MessageSignature $messageSignature = null,
         public readonly array $rfc3161Timestamps = [],
+        public readonly ?string $publicKeyHint = null,
     ) {
     }
 
@@ -47,6 +49,18 @@ final class Bundle
     public function isMessageSignature(): bool
     {
         return $this->messageSignature !== null;
+    }
+
+    /** True if the signing identity is a Fulcio leaf certificate (keyless). */
+    public function hasCertificate(): bool
+    {
+        return $this->leafCertificate !== null;
+    }
+
+    /** True if the signing identity is a public-key reference (caller supplies the key). */
+    public function isPublicKey(): bool
+    {
+        return $this->leafCertificate === null;
     }
 
     public static function fromJson(string $json): self
@@ -64,7 +78,7 @@ final class Bundle
         }
 
         $material = Json::object($data, 'verificationMaterial');
-        $leaf = self::leafCertificate($material);
+        [$leaf, $hint] = self::signingMaterial($material);
         $tlogEntries = self::tlogEntries($material);
         $timestamps = self::rfc3161Timestamps($material);
 
@@ -75,6 +89,7 @@ final class Bundle
                 tlogEntries: $tlogEntries,
                 dsseEnvelope: self::dsseEnvelope(Json::object($data, 'dsseEnvelope')),
                 rfc3161Timestamps: $timestamps,
+                publicKeyHint: $hint,
             );
         }
 
@@ -85,17 +100,24 @@ final class Bundle
                 tlogEntries: $tlogEntries,
                 messageSignature: MessageSignature::fromArray(Json::object($data, 'messageSignature')),
                 rfc3161Timestamps: $timestamps,
+                publicKeyHint: $hint,
             );
         }
 
         throw new InvalidBundleException('Bundle has neither dsseEnvelope nor messageSignature content.');
     }
 
-    /** @param array<string, mixed> $material */
-    private static function leafCertificate(array $material): string
+    /**
+     * Resolve the signing identity: a Fulcio leaf certificate (keyless) or a
+     * public-key reference. Exactly one is returned non-null.
+     *
+     * @param  array<string, mixed>  $material
+     * @return array{0: ?string, 1: ?string} the leaf certificate DER, and the public-key hint
+     */
+    private static function signingMaterial(array $material): array
     {
         if (isset($material['certificate'])) {
-            return Json::base64(Json::object($material, 'certificate'), 'rawBytes');
+            return [Json::base64(Json::object($material, 'certificate'), 'rawBytes'), null];
         }
 
         if (isset($material['x509CertificateChain'])) {
@@ -106,15 +128,27 @@ final class Bundle
                 throw new InvalidBundleException('x509CertificateChain.certificates is empty.');
             }
 
-            return Json::base64($leaf, 'rawBytes');
+            return [Json::base64($leaf, 'rawBytes'), null];
         }
 
         if (isset($material['publicKey'])) {
-            throw new UnsupportedBundleException(
-                'This version verifies certificate-based bundles only; public-key bundles are not supported.'
-            );
+            return [null, self::publicKeyHint(Json::object($material, 'publicKey'))];
         }
-        throw new InvalidBundleException('Bundle verification material has no certificate.');
+
+        throw new InvalidBundleException('Bundle verification material has no certificate or public key.');
+    }
+
+    /**
+     * The hint of a public-key bundle, or null when absent. The hint only names
+     * which key the caller must supply; the bundle never carries the key bytes.
+     *
+     * @param array<string, mixed> $publicKey
+     */
+    private static function publicKeyHint(array $publicKey): ?string
+    {
+        $hint = $publicKey['hint'] ?? null;
+
+        return is_string($hint) && $hint !== '' ? $hint : null;
     }
 
     /**
