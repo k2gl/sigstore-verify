@@ -24,7 +24,7 @@ final class Checkpoint
     private int $treeSize;
     private string $rootHash;
 
-    /** @var list<string> raw signature bytes (key hint stripped) */
+    /** @var list<CheckpointSignature> */
     private array $signatures;
 
     public function __construct(public readonly string $envelope)
@@ -80,17 +80,17 @@ final class Checkpoint
     }
 
     /**
-     * Raw signature bytes (the 4-byte key hint removed), one per signature line.
-     * For Rekor these are ASN.1 DER ECDSA signatures.
+     * The checkpoint's signature lines, each with its 4-byte key hint and raw
+     * signature bytes. For Rekor the signatures are ASN.1 DER ECDSA signatures.
      *
-     * @return list<string>
+     * @return list<CheckpointSignature>
      */
     public function signatures(): array
     {
         return $this->signatures;
     }
 
-    /** @return list<string> */
+    /** @return list<CheckpointSignature> */
     private static function parseSignatures(string $block): array
     {
         $signatures = [];
@@ -109,7 +109,10 @@ final class Checkpoint
             if ($decoded === false || strlen($decoded) <= 4) {
                 continue;
             }
-            $signatures[] = substr($decoded, 4);
+            $signatures[] = new CheckpointSignature(
+                keyHint: substr($decoded, 0, 4),
+                signature: substr($decoded, 4),
+            );
         }
 
         return $signatures;

@@ -37,7 +37,6 @@ jobs:
           # fnmatch-es them against the full node name. Strict xfail: if one of these
           # starts passing, CI fails so the entry can be removed.
           xfail: >-
-            test_verify?PATH-checkpoint-bad-keyhint_fail?
             test_verify?PATH-bundle-with-sct-with-extensions?
             test_verify?PATH-rekor2-happy-path?
             test_verify?PATH-rekor2-timestamp-with-embedded-cert?

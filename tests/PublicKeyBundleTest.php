@@ -332,7 +332,7 @@ final class PublicKeyBundleTest extends TestCase
     {
         $body = "test-log\n1\n" . base64_encode($rootHash);
         $signature = $this->logKey->sign($body . "\n");
-        $note = base64_encode("\x00\x00\x00\x00" . $signature);
+        $note = base64_encode(substr($this->logId, 0, 4) . $signature);
 
         return new Checkpoint($body . "\n\n— test-log " . $note . "\n");
     }
