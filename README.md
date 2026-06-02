@@ -1,6 +1,7 @@
 # k2gl/sigstore-verify
 
 [![CI](https://img.shields.io/github/actions/workflow/status/k2gl/sigstore-verify/ci.yml?branch=main&label=CI&logo=github)](https://github.com/k2gl/sigstore-verify/actions/workflows/ci.yml)
+[![Conformance](https://img.shields.io/github/actions/workflow/status/k2gl/sigstore-verify/conformance.yml?branch=main&label=conformance&logo=sigstore&logoColor=white)](https://github.com/k2gl/sigstore-verify/actions/workflows/conformance.yml)
 [![Latest Stable Version](https://img.shields.io/packagist/v/k2gl/sigstore-verify?logo=packagist&logoColor=white)](https://packagist.org/packages/k2gl/sigstore-verify)
 [![Total Downloads](https://img.shields.io/packagist/dt/k2gl/sigstore-verify?logo=packagist&logoColor=white)](https://packagist.org/packages/k2gl/sigstore-verify)
 [![PHPStan Level](https://img.shields.io/badge/PHPStan-level%209-2a5ea7?logo=php&logoColor=white)](https://phpstan.org)
@@ -215,6 +216,15 @@ of scope and are rejected with `UnsupportedBundleException` rather than skipped:
 The trusted root can be resolved over TUF — supply it yourself with `TrustedRoot::fromJson()`,
 or fetch and refresh it with `TrustedRoot::fromTuf()` / `TrustedRoot::fromSigstorePublicGood()`
 (see [The trusted root](#the-trusted-root)).
+
+## Conformance
+
+The verifier is exercised against the official
+[sigstore-conformance](https://github.com/sigstore/sigstore-conformance) suite on every push
+(verification only). Most of the suite's verification cases pass today; the remainder are tracked
+as known gaps on the way to a `1.0.0` that clears the suite end to end — Rekor v2 transparency-log
+entries, verification from a bare artifact digest, and a few stricter rejection checks. Until then
+the package stays in `0.x`. See [Scope](#scope) for what is verified versus rejected as unsupported.
 
 ## Exceptions
 
