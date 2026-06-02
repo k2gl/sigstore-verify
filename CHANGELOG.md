@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+Verification hardening toward 1.0.0 conformance parity (fail-closed).
+
+- **Rekor entry binding** — a Merkle inclusion proof is now required for bundle media type
+  v0.2+ (an inclusion promise alone is no longer enough; v0.1 bundles may still rely on the
+  promise), and the log entry body must record the same signature — and, for a keyless bundle,
+  the same certificate — that the bundle carries. This rejects a bundle whose content is genuine
+  but whose transparency-log entry was made with different signing material.
+- **Checkpoint key hint** — a checkpoint note signature is now accepted only when its four-byte
+  key hint matches the transparency log that produced the entry (the first four bytes of the
+  log's key id). A note signed by some other key is rejected even if the signature itself is
+  well-formed. Adds the `CheckpointSignature` value object; `Checkpoint::signatures()` now returns
+  `list<CheckpointSignature>` rather than raw signature strings.
+
+Against sigstore-conformance **v0.0.28** the suite is now 100 pass / 26 xfail / 6 skip.
+
 ## 0.7.0
 
 Conformance test harness.

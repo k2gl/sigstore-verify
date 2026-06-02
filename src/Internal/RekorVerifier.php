@@ -115,10 +115,19 @@ final class RekorVerifier
             throw new VerificationFailedException('Checkpoint does not match the inclusion proof.');
         }
 
+        // Rekor's checkpoint key hint is the first four bytes of the log's key
+        // id (the SHA-256 of its public key). Only a signature line bearing that
+        // hint is the entry's own log; ignore co-signatures from other notaries.
+        $expectedKeyHint = substr($log->logId, 0, 4);
+
         foreach ($checkpoint->signatures() as $signature) {
+            if (! hash_equals($expectedKeyHint, $signature->keyHint)) {
+                continue;
+            }
+
             $valid = Ecdsa::verifyDer(
                 message: $checkpoint->signedBody(),
-                derSignature: $signature,
+                derSignature: $signature->signature,
                 publicKeyPem: $log->publicKeyPem,
             );
 

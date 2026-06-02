@@ -87,7 +87,7 @@ final class RekorInclusionProofTest extends TestCase
         $body = "test-log\n1\n" . base64_encode($rootHash);
         $signedBody = $body . "\n";
         openssl_sign($signedBody, $signature, $this->logKey, OPENSSL_ALGO_SHA256);
-        $note = base64_encode("\x00\x00\x00\x00" . $signature);
+        $note = base64_encode(substr($this->logId, 0, 4) . $signature);
 
         return new Checkpoint($body . "\n\n— test-log " . $note . "\n");
     }
@@ -204,6 +204,43 @@ final class RekorInclusionProofTest extends TestCase
         (new RekorVerifier)->verify(
             entry: $this->entry($this->rootHash),
             trustedRoot: $foreignRoot,
+            expectedHashHex: hash('sha256', self::PAYLOAD),
+            expectedSignature: self::SIGNATURE,
+            signingCertificateDer: null,
+            requireInclusionProof: true,
+        );
+    }
+
+    public function testRejectsCheckpointWithWrongKeyHint(): void
+    {
+        // The checkpoint note is signed by the right key but carries a key hint
+        // that is not the log's: the entry's own log did not produce this note.
+        $body = "test-log\n1\n" . base64_encode($this->rootHash);
+        openssl_sign($body . "\n", $signature, $this->logKey, OPENSSL_ALGO_SHA256);
+        $wrongHint = substr($this->logId, 0, 4) ^ "\x01\x00\x00\x00";
+        $note = base64_encode($wrongHint . (string) $signature);
+        $checkpoint = new Checkpoint($body . "\n\n— test-log " . $note . "\n");
+
+        $entry = new TlogEntry(
+            logIndex: 0,
+            logId: $this->logId,
+            kind: 'intoto',
+            integratedTime: 1700000000,
+            signedEntryTimestamp: null,
+            inclusionProof: new InclusionProof(
+                logIndex: 0,
+                treeSize: 1,
+                rootHash: $this->rootHash,
+                hashes: [],
+                checkpoint: $checkpoint,
+            ),
+            canonicalizedBody: $this->canonicalBody,
+        );
+
+        $this->expectException(VerificationFailedException::class);
+        (new RekorVerifier)->verify(
+            entry: $entry,
+            trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
             expectedSignature: self::SIGNATURE,
             signingCertificateDer: null,
