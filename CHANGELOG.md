@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.0
+
+Conformance test harness.
+
+- **`bin/conformance`** — a client-under-test adapter implementing the official
+  [sigstore-conformance](https://github.com/sigstore/sigstore-conformance) CLI protocol
+  (`verify-bundle`, both the certificate-identity and the public-key form) on top of the existing
+  `SigstoreVerifier`. For an attestation bundle it also binds the verified statement to the artifact
+  by checking the artifact's digest is one of the statement subjects. It is a development/CI
+  artifact and is excluded from the published package.
+- **`.github/workflows/conformance.yml`** — runs the sigstore-conformance suite (verification only,
+  `--skip-signing`) against that adapter on every push. Against suite **v0.0.28**, 91 of the
+  verification cases pass; the remaining 35 are tracked as strict expected failures (`xfail`) and
+  are the agenda for the 1.0.0 conformance-parity release: Rekor v2 transparency-log entries,
+  message-signature verification from a bare artifact digest, a handful of stricter fail-closed
+  checks for malformed Rekor entries and checkpoints, and one bundle-parsing edge case.
+
+No library code changed: existing APIs and verification behavior are unchanged.
+
 ## 0.6.0
 
 TUF trusted root.

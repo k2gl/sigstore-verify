@@ -1,0 +1,293 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+namespace K2gl\Sigstore\Conformance;
+
+use K2gl\Dsse\Envelope;
+use K2gl\Sigstore\Bundle;
+use K2gl\Sigstore\Exception\SigstoreException;
+use K2gl\Sigstore\Exception\UnsupportedBundleException;
+use K2gl\Sigstore\Exception\VerificationFailedException;
+use K2gl\Sigstore\IdentityPolicy;
+use K2gl\Sigstore\SigstoreVerifier;
+use K2gl\Sigstore\TrustedRoot;
+
+/**
+ * Client-under-test entrypoint for the official sigstore-conformance suite.
+ *
+ * It implements the `verify-bundle` subcommand of the conformance CLI protocol
+ * (both the certificate and public-key forms) on top of {@see SigstoreVerifier}.
+ * The suite runs it as `${entrypoint} verify-bundle …` and reads the process
+ * exit code: 0 means the bundle verified, any non-zero means it did not. Signing
+ * subcommands are out of scope for a verify-only library and are run only when
+ * the suite is invoked without `--skip-signing`.
+ *
+ * This file ships only for conformance testing; it is `export-ignore`d from the
+ * published package.
+ */
+final class ConformanceClient
+{
+    /** @param list<string> $args */
+    public function run(array $args): int
+    {
+        $command = $args[0] ?? null;
+
+        try {
+            return match ($command) {
+                'verify-bundle' => $this->verifyBundle(array_slice($args, 1)),
+                'sign', 'sign-bundle' => $this->unsupportedSigning(),
+                null => $this->fail('Missing subcommand.'),
+                default => $this->fail(sprintf('Unsupported subcommand "%s".', $command)),
+            };
+        } catch (SigstoreException $e) {
+            return $this->fail($e->getMessage());
+        }
+    }
+
+    /** @param list<string> $args */
+    private function verifyBundle(array $args): int
+    {
+        $bundlePath = null;
+        $certIdentity = null;
+        $oidcIssuer = null;
+        $keyPath = null;
+        $trustedRootPath = null;
+        $staging = false;
+        $artifact = null;
+
+        for ($i = 0; $i < count($args); $i++) {
+            $flag = $args[$i];
+
+            switch ($flag) {
+                case '--staging':
+                    $staging = true;
+                    break;
+                case '--bundle':
+                    $bundlePath = $this->value($args, ++$i, $flag);
+                    break;
+                case '--certificate-identity':
+                    $certIdentity = $this->value($args, ++$i, $flag);
+                    break;
+                case '--certificate-oidc-issuer':
+                    $oidcIssuer = $this->value($args, ++$i, $flag);
+                    break;
+                case '--key':
+                    $keyPath = $this->value($args, ++$i, $flag);
+                    break;
+                case '--trusted-root':
+                    $trustedRootPath = $this->value($args, ++$i, $flag);
+                    break;
+                default:
+                    $artifact = $flag;
+            }
+        }
+
+        if ($bundlePath === null) {
+            return $this->fail('verify-bundle requires --bundle.');
+        }
+
+        if ($artifact === null) {
+            return $this->fail('verify-bundle requires an artifact path or "sha256:" digest.');
+        }
+
+        $bundle = Bundle::fromJson($this->readFile($bundlePath));
+        $trustedRoot = $this->resolveTrustedRoot($trustedRootPath, $staging);
+        [$artifactBytes, $artifactDigests] = $this->resolveArtifact($artifact);
+
+        $verifier = new SigstoreVerifier;
+
+        if ($keyPath !== null) {
+            $this->verifyWithKey($verifier, $bundle, $this->readFile($keyPath), $trustedRoot, $artifactBytes, $artifactDigests);
+
+            return 0;
+        }
+
+        if ($certIdentity === null || $oidcIssuer === null) {
+            return $this->fail('verify-bundle requires either --key or both --certificate-identity and --certificate-oidc-issuer.');
+        }
+
+        $this->verifyWithCertificate(
+            $verifier,
+            $bundle,
+            new IdentityPolicy($certIdentity, $oidcIssuer),
+            $trustedRoot,
+            $artifactBytes,
+            $artifactDigests,
+        );
+
+        return 0;
+    }
+
+    /** @param array<string, string> $artifactDigests algorithm => lower-case hex digest of the artifact */
+    private function verifyWithKey(
+        SigstoreVerifier $verifier,
+        Bundle $bundle,
+        string $publicKeyPem,
+        TrustedRoot $trustedRoot,
+        ?string $artifactBytes,
+        array $artifactDigests,
+    ): void {
+        if ($bundle->isDsse()) {
+            $envelope = $verifier->verifyWithPublicKey(
+                bundle: $bundle,
+                publicKeyPem: $publicKeyPem,
+                trustedRoot: $trustedRoot,
+            );
+            $this->assertArtifactIsSubject($envelope, $artifactDigests);
+
+            return;
+        }
+
+        $verifier->verifyArtifactWithPublicKey(
+            bundle: $bundle,
+            artifact: $this->requireArtifactBytes($artifactBytes),
+            publicKeyPem: $publicKeyPem,
+            trustedRoot: $trustedRoot,
+        );
+    }
+
+    /** @param array<string, string> $artifactDigests algorithm => lower-case hex digest of the artifact */
+    private function verifyWithCertificate(
+        SigstoreVerifier $verifier,
+        Bundle $bundle,
+        IdentityPolicy $identityPolicy,
+        TrustedRoot $trustedRoot,
+        ?string $artifactBytes,
+        array $artifactDigests,
+    ): void {
+        if ($bundle->isDsse()) {
+            $envelope = $verifier->verify(
+                bundle: $bundle,
+                trustedRoot: $trustedRoot,
+                identityPolicy: $identityPolicy,
+            );
+            $this->assertArtifactIsSubject($envelope, $artifactDigests);
+
+            return;
+        }
+
+        $verifier->verifyArtifact(
+            bundle: $bundle,
+            artifact: $this->requireArtifactBytes($artifactBytes),
+            trustedRoot: $trustedRoot,
+            identityPolicy: $identityPolicy,
+        );
+    }
+
+    /**
+     * The conformance suite passes the signed artifact even for attestation
+     * bundles, expecting the verifier to confirm it is one of the statement's
+     * subjects. The library leaves that binding to the caller, so it is done here:
+     * the artifact matches when any of its digests equals the subject's digest
+     * recorded under the same algorithm.
+     *
+     * @param array<string, string> $artifactDigests algorithm => lower-case hex digest of the artifact
+     */
+    private function assertArtifactIsSubject(Envelope $envelope, array $artifactDigests): void
+    {
+        $statement = json_decode($envelope->payload, true);
+
+        if (! is_array($statement) || ! isset($statement['subject']) || ! is_array($statement['subject'])) {
+            throw new VerificationFailedException('Attestation statement has no subjects to match the artifact against.');
+        }
+
+        foreach ($statement['subject'] as $subject) {
+            if (! is_array($subject) || ! isset($subject['digest']) || ! is_array($subject['digest'])) {
+                continue;
+            }
+
+            foreach ($subject['digest'] as $algorithm => $value) {
+                if (is_string($algorithm)
+                    && is_string($value)
+                    && isset($artifactDigests[$algorithm])
+                    && hash_equals($artifactDigests[$algorithm], strtolower($value))
+                ) {
+                    return;
+                }
+            }
+        }
+
+        throw new VerificationFailedException('Artifact digest is not among the attestation subjects.');
+    }
+
+    private function resolveTrustedRoot(?string $trustedRootPath, bool $staging): TrustedRoot
+    {
+        if ($trustedRootPath !== null) {
+            return TrustedRoot::fromJson($this->readFile($trustedRootPath));
+        }
+
+        if ($staging) {
+            throw new UnsupportedBundleException('No built-in staging trusted root; pass --trusted-root.');
+        }
+
+        return TrustedRoot::fromSigstorePublicGood();
+    }
+
+    /**
+     * The positional argument is either a path to the artifact or a literal
+     * "<algorithm>:<hex>" digest. For a path the bytes are read and the common
+     * digests are precomputed so a subject under any of them can be matched; for
+     * a digest only that one algorithm is known and the bytes are null.
+     *
+     * @return array{0: ?string, 1: array<string, string>} the artifact bytes (or null) and its algorithm => hex digests
+     */
+    private function resolveArtifact(string $artifact): array
+    {
+        if (preg_match('/^(sha256|sha384|sha512):([0-9a-fA-F]+)$/', $artifact, $matches) === 1) {
+            return [null, [strtolower($matches[1]) => strtolower($matches[2])]];
+        }
+        $bytes = $this->readFile($artifact);
+
+        return [$bytes, [
+            'sha256' => hash('sha256', $bytes),
+            'sha384' => hash('sha384', $bytes),
+            'sha512' => hash('sha512', $bytes),
+        ]];
+    }
+
+    private function requireArtifactBytes(?string $artifactBytes): string
+    {
+        return $artifactBytes ?? throw new UnsupportedBundleException(
+            'Message-signature verification needs the artifact bytes; a "sha256:" digest is not enough.'
+        );
+    }
+
+    private function unsupportedSigning(): int
+    {
+        return $this->fail('This client verifies only; run the suite with --skip-signing.');
+    }
+
+    /** @param list<string> $args */
+    private function value(array $args, int $index, string $flag): string
+    {
+        return $args[$index] ?? throw new VerificationFailedException(sprintf('Flag %s requires a value.', $flag));
+    }
+
+    private function readFile(string $path): string
+    {
+        $contents = @file_get_contents($path);
+
+        if ($contents === false) {
+            throw new VerificationFailedException(sprintf('Could not read "%s".', $path));
+        }
+
+        return $contents;
+    }
+
+    private function fail(string $message): int
+    {
+        fwrite(STDERR, $message . PHP_EOL);
+
+        return 1;
+    }
+}
+
+$autoload = is_file(__DIR__ . '/../vendor/autoload.php')
+    ? __DIR__ . '/../vendor/autoload.php'
+    : __DIR__ . '/../../../autoload.php';
+
+require $autoload;
+
+exit((new ConformanceClient)->run(array_slice($argv, 1)));
