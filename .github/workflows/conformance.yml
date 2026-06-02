@@ -37,11 +37,6 @@ jobs:
           # fnmatch-es them against the full node name. Strict xfail: if one of these
           # starts passing, CI fails so the entry can be removed.
           xfail: >-
-            test_verify?PATH-wrong-hashedrekord-cert-and-sig_fail?
-            test_verify?PATH-invalid-inclusion-proof_fail?
-            test_verify?PATH-intoto-missing-inclusion-proof_fail?
-            test_verify?PATH-intoto-log-entry-mismatch_fail?
-            test_verify?PATH-dsse-mismatch-sig_fail?
             test_verify?PATH-checkpoint-bad-keyhint_fail?
             test_verify?PATH-bundle-with-sct-with-extensions?
             test_verify?PATH-rekor2-happy-path?
@@ -54,9 +49,6 @@ jobs:
             test_verify?PATH-rekor2-checkpoint-two-sigs-cosigned?
             test_verify?PATH-rekor2-checkpoint-two-sigs-from-origin?
             test_verify?DIGEST-bundle-with-sct-with-extensions?
-            test_verify?DIGEST-intoto-missing-inclusion-proof_fail?
-            test_verify?DIGEST-intoto-log-entry-mismatch_fail?
-            test_verify?DIGEST-dsse-mismatch-sig_fail?
             test_verify?DIGEST-happy-path-v0.1?
             test_verify?DIGEST-happy-path-v0.2?
             test_verify?DIGEST-happy-path-v0.3?
