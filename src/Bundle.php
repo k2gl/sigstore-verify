@@ -62,6 +62,26 @@ final class Bundle
         return $this->leafCertificate === null;
     }
 
+    /**
+     * Whether a Merkle inclusion proof is mandatory: from bundle media type
+     * v0.2 onward an inclusion promise alone is not enough, while the earliest
+     * (v0.1) bundles predate that requirement.
+     */
+    public function requiresInclusionProof(): bool
+    {
+        return version_compare($this->mediaTypeVersion(), '0.2', '>=');
+    }
+
+    /** The bundle media type version, e.g. "0.1", "0.2", "0.3". */
+    private function mediaTypeVersion(): string
+    {
+        if (preg_match('/[.;]v(?:ersion=)?(\d+\.\d+)/', $this->mediaType, $matches) === 1) {
+            return $matches[1];
+        }
+
+        return '0.1';
+    }
+
     public static function fromJson(string $json): self
     {
         return self::fromArray(Json::decodeObject($json));

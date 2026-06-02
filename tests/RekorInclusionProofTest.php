@@ -40,6 +40,7 @@ use function K2gl\PHPUnitFluentAssertions\fact;
 final class RekorInclusionProofTest extends TestCase
 {
     private const PAYLOAD = 'the-attestation-payload';
+    private const SIGNATURE = 'the-raw-envelope-signature-bytes';
 
     private OpenSSLAsymmetricKey $logKey;
     private string $logId;
@@ -66,10 +67,16 @@ final class RekorInclusionProofTest extends TestCase
         $this->canonicalBody = (string) json_encode([
             'kind' => 'intoto',
             'apiVersion' => '0.0.2',
-            'spec' => ['content' => ['payloadHash' => [
-                'algorithm' => 'sha256',
-                'value' => hash('sha256', self::PAYLOAD),
-            ]]],
+            'spec' => ['content' => [
+                'payloadHash' => [
+                    'algorithm' => 'sha256',
+                    'value' => hash('sha256', self::PAYLOAD),
+                ],
+                'envelope' => [
+                    // in-toto v0.0.2 stores the envelope signature base64-encoded twice.
+                    'signatures' => [['sig' => base64_encode(base64_encode(self::SIGNATURE))]],
+                ],
+            ]],
         ]);
         // Single-leaf tree: the root is the leaf hash.
         $this->rootHash = MerkleInclusion::leafHash($this->canonicalBody);
@@ -110,6 +117,9 @@ final class RekorInclusionProofTest extends TestCase
             entry: $this->entry($this->rootHash),
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
+            expectedSignature: self::SIGNATURE,
+            signingCertificateDer: null,
+            requireInclusionProof: true,
         );
         $this->addToAssertionCount(1);
     }
@@ -122,6 +132,9 @@ final class RekorInclusionProofTest extends TestCase
             entry: $this->entry($wrongRoot),
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
+            expectedSignature: self::SIGNATURE,
+            signingCertificateDer: null,
+            requireInclusionProof: true,
         );
     }
 
@@ -132,6 +145,46 @@ final class RekorInclusionProofTest extends TestCase
             entry: $this->entry($this->rootHash),
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', 'a-different-payload'),
+            expectedSignature: self::SIGNATURE,
+            signingCertificateDer: null,
+            requireInclusionProof: true,
+        );
+    }
+
+    public function testRejectsBodySignatureMismatch(): void
+    {
+        // The entry is logged with a signature other than the one the bundle carries.
+        $this->expectException(VerificationFailedException::class);
+        (new RekorVerifier)->verify(
+            entry: $this->entry($this->rootHash),
+            trustedRoot: $this->trustedRoot,
+            expectedHashHex: hash('sha256', self::PAYLOAD),
+            expectedSignature: 'a-different-signature',
+            signingCertificateDer: null,
+            requireInclusionProof: true,
+        );
+    }
+
+    public function testRejectsMissingInclusionProofWhenRequired(): void
+    {
+        $entry = new TlogEntry(
+            logIndex: 0,
+            logId: $this->logId,
+            kind: 'intoto',
+            integratedTime: 1700000000,
+            signedEntryTimestamp: null,
+            inclusionProof: null,
+            canonicalizedBody: $this->canonicalBody,
+        );
+
+        $this->expectException(VerificationFailedException::class);
+        (new RekorVerifier)->verify(
+            entry: $entry,
+            trustedRoot: $this->trustedRoot,
+            expectedHashHex: hash('sha256', self::PAYLOAD),
+            expectedSignature: self::SIGNATURE,
+            signingCertificateDer: null,
+            requireInclusionProof: true,
         );
     }
 
@@ -152,6 +205,9 @@ final class RekorInclusionProofTest extends TestCase
             entry: $this->entry($this->rootHash),
             trustedRoot: $foreignRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
+            expectedSignature: self::SIGNATURE,
+            signingCertificateDer: null,
+            requireInclusionProof: true,
         );
     }
 }

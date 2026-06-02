@@ -90,7 +90,7 @@ final class SigstoreVerifier
         $leaf = $this->verifyCertificate($bundle, $trustedRoot, $signingTime);
 
         $this->verifyDsseSignature($envelope, $leaf->signatureKey());
-        $this->verifyTransparencyLog($bundle, $trustedRoot, hash('sha256', $envelope->payload));
+        $this->verifyTransparencyLog($bundle, $trustedRoot, hash('sha256', $envelope->payload), $this->dsseSignature($envelope));
         $identityPolicy->verify($leaf->subjectAlternativeNames(), $leaf->oidcIssuer());
 
         return $envelope;
@@ -131,7 +131,7 @@ final class SigstoreVerifier
         $leaf = $this->verifyCertificate($bundle, $trustedRoot, $signingTime);
 
         $this->verifyArtifactSignature($signature, $artifact, $leaf->signatureKey());
-        $this->verifyTransparencyLog($bundle, $trustedRoot, bin2hex($signature->messageDigest));
+        $this->verifyTransparencyLog($bundle, $trustedRoot, bin2hex($signature->messageDigest), $signature->signature);
         $identityPolicy->verify($leaf->subjectAlternativeNames(), $leaf->oidcIssuer());
     }
 
@@ -169,7 +169,7 @@ final class SigstoreVerifier
 
         $this->signingTime($bundle, $trustedRoot, $this->dsseSignature($envelope));
         $this->verifyDsseSignature($envelope, SignatureKey::fromPem($publicKeyPem));
-        $this->verifyTransparencyLog($bundle, $trustedRoot, hash('sha256', $envelope->payload));
+        $this->verifyTransparencyLog($bundle, $trustedRoot, hash('sha256', $envelope->payload), $this->dsseSignature($envelope));
 
         return $envelope;
     }
@@ -211,7 +211,7 @@ final class SigstoreVerifier
 
         $this->signingTime($bundle, $trustedRoot, $signature->signature);
         $this->verifyArtifactSignature($signature, $artifact, SignatureKey::fromPem($publicKeyPem));
-        $this->verifyTransparencyLog($bundle, $trustedRoot, bin2hex($signature->messageDigest));
+        $this->verifyTransparencyLog($bundle, $trustedRoot, bin2hex($signature->messageDigest), $signature->signature);
     }
 
     /** The bundle's DSSE in-toto attestation envelope, or a rejection if it carries none. */
@@ -393,12 +393,16 @@ final class SigstoreVerifier
         Bundle $bundle,
         TrustedRoot $trustedRoot,
         string $expectedHashHex,
+        string $expectedSignature,
     ): void {
         foreach ($bundle->tlogEntries as $entry) {
             $this->rekorVerifier->verify(
                 entry: $entry,
                 trustedRoot: $trustedRoot,
                 expectedHashHex: $expectedHashHex,
+                expectedSignature: $expectedSignature,
+                signingCertificateDer: $bundle->leafCertificate,
+                requireInclusionProof: $bundle->requiresInclusionProof(),
             );
         }
     }

@@ -175,7 +175,7 @@ final class PublicKeyBundleTest extends TestCase
         $bundle = new Bundle(
             mediaType: 'application/vnd.dev.sigstore.bundle.v0.3+json',
             leafCertificate: null,
-            tlogEntries: [$this->entry('dsse', $this->dsseBody('{"_type":"tampered"}'))],
+            tlogEntries: [$this->entry('dsse', $this->dsseBody('{"_type":"tampered"}', $signature))],
             dsseEnvelope: $envelope,
             publicKeyHint: self::HINT,
         );
@@ -254,7 +254,7 @@ final class PublicKeyBundleTest extends TestCase
         return new Bundle(
             mediaType: 'application/vnd.dev.sigstore.bundle.v0.3+json',
             leafCertificate: null,
-            tlogEntries: [$this->entry('dsse', $this->dsseBody(self::PAYLOAD))],
+            tlogEntries: [$this->entry('dsse', $this->dsseBody(self::PAYLOAD, $signature))],
             dsseEnvelope: new Envelope(self::PAYLOAD, Statement::PAYLOAD_TYPE, [new Signature($signature, null)]),
             publicKeyHint: self::HINT,
         );
@@ -267,7 +267,7 @@ final class PublicKeyBundleTest extends TestCase
         return new Bundle(
             mediaType: 'application/vnd.dev.sigstore.bundle.v0.3+json',
             leafCertificate: null,
-            tlogEntries: [$this->entry('hashedrekord', $this->hashedrekordBody(bin2hex($digest)))],
+            tlogEntries: [$this->entry('hashedrekord', $this->hashedrekordBody(bin2hex($digest), $signature))],
             messageSignature: new MessageSignature($hashAlgorithm, $digest, $signature),
             publicKeyHint: self::HINT,
         );
@@ -283,21 +283,27 @@ final class PublicKeyBundleTest extends TestCase
         };
     }
 
-    private function dsseBody(string $payload): string
+    private function dsseBody(string $payload, string $signature): string
     {
         return (string) json_encode([
             'kind' => 'dsse',
             'apiVersion' => '0.0.1',
-            'spec' => ['payloadHash' => ['algorithm' => 'sha256', 'value' => hash('sha256', $payload)]],
+            'spec' => [
+                'payloadHash' => ['algorithm' => 'sha256', 'value' => hash('sha256', $payload)],
+                'signatures' => [['signature' => base64_encode($signature)]],
+            ],
         ]);
     }
 
-    private function hashedrekordBody(string $digestHex): string
+    private function hashedrekordBody(string $digestHex, string $signature): string
     {
         return (string) json_encode([
             'kind' => 'hashedrekord',
             'apiVersion' => '0.0.1',
-            'spec' => ['data' => ['hash' => ['algorithm' => 'sha256', 'value' => $digestHex]]],
+            'spec' => [
+                'data' => ['hash' => ['algorithm' => 'sha256', 'value' => $digestHex]],
+                'signature' => ['content' => base64_encode($signature)],
+            ],
         ]);
     }
 
