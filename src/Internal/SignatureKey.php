@@ -26,7 +26,8 @@ use Throwable;
  * The same instance verifies a DSSE envelope (over its PAE) and a message
  * signature (over the artifact bytes): for ECDSA and RSA ext-openssl recomputes
  * the digest ({@see OpensslVerifier}), and for Ed25519 the dsse
- * {@see Ed25519Verifier} is reused.
+ * {@see Ed25519Verifier} is reused. For ECDSA and RSA it can also verify from a
+ * bare artifact digest ({@see verifyDigest()}), which ext-openssl cannot do.
  *
  * @internal
  */
@@ -36,6 +37,7 @@ final class SignatureKey implements Verifier
         private readonly Verifier $verifier,
         private readonly string $digestAlgorithm,
         private readonly bool $ed25519,
+        private readonly ?DigestVerifier $digestVerifier = null,
     ) {}
 
     /** Resolve a PEM-encoded public key supplied out of band (public-key bundles). */
@@ -62,10 +64,13 @@ final class SignatureKey implements Verifier
 
         if ($key instanceof RSA) {
             // Sigstore RSA signatures are PKCS#1 v1.5 over SHA-256.
+            $pem = self::pem($key->toString('PKCS8'));
+
             return new self(
-                verifier: new OpensslVerifier(self::pem($key->toString('PKCS8')), OPENSSL_ALGO_SHA256),
+                verifier: new OpensslVerifier($pem, OPENSSL_ALGO_SHA256),
                 digestAlgorithm: 'sha256',
                 ed25519: false,
+                digestVerifier: new RsaPrehashed($pem, 'sha256'),
             );
         }
 
@@ -100,6 +105,7 @@ final class SignatureKey implements Verifier
             verifier: new OpensslVerifier(self::pem($key->toString('PKCS8')), $algorithm),
             digestAlgorithm: $digest,
             ed25519: false,
+            digestVerifier: EcdsaPrehashed::fromEcKey($key),
         );
     }
 
@@ -120,6 +126,22 @@ final class SignatureKey implements Verifier
     public function verify(string $message, string $signature): bool
     {
         return $this->verifier->verify($message, $signature);
+    }
+
+    /**
+     * Verify a message signature against an already-computed artifact digest,
+     * for bundles verified from a bare digest. Defined for ECDSA and RSA; an
+     * Ed25519 key has none (its message-signature flow is rejected upstream).
+     */
+    public function verifyDigest(string $digest, string $signature): bool
+    {
+        if ($this->digestVerifier === null) {
+            throw new UnsupportedBundleException(
+                'This signing key cannot verify a message signature from a digest.'
+            );
+        }
+
+        return $this->digestVerifier->verifyDigest($digest, $signature);
     }
 
     /** The digest the message-signature digest field is expected to use for this key. */

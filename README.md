@@ -168,6 +168,24 @@ use K2gl\Sigstore\SigstoreVerifier;
 `verifyArtifactFromJson()` is the JSON-string shorthand. Use `Bundle::isDsse()` /
 `Bundle::isMessageSignature()` to pick the right method for an unknown bundle.
 
+When the artifact bytes are unavailable — too large to load, or already hashed —
+verify from its digest instead. Sigstore's ECDSA and RSA schemes sign the artifact
+digest, so the bytes are not needed:
+
+```php
+(new SigstoreVerifier())->verifyArtifactDigest(
+    bundle: Bundle::fromJson($bundleJson),
+    algorithm: 'sha256',
+    hexDigest: hash_file('sha256', 'artifact.bin'),
+    trustedRoot: TrustedRoot::fromJson($trustedRootJson),
+    identityPolicy: $policy,
+);
+```
+
+`$algorithm` (`sha256` / `sha384` / `sha512`) must match the one the bundle records.
+`verifyArtifactDigestWithPublicKey()` is the public-key counterpart, and both have
+`...FromJson()` shorthands.
+
 ### Verifying a public-key bundle
 
 A bundle signed with your own key (`cosign sign-blob --key` / `cosign attest --key`, or a
@@ -221,10 +239,11 @@ or fetch and refresh it with `TrustedRoot::fromTuf()` / `TrustedRoot::fromSigsto
 
 The verifier is exercised against the official
 [sigstore-conformance](https://github.com/sigstore/sigstore-conformance) suite on every push
-(verification only). Most of the suite's verification cases pass today; the remainder are tracked
-as known gaps on the way to a `1.0.0` that clears the suite end to end — Rekor v2 transparency-log
-entries, verification from a bare artifact digest, and a few stricter rejection checks. Until then
-the package stays in `0.x`. See [Scope](#scope) for what is verified versus rejected as unsupported.
+(verification only). Most of the suite's verification cases pass today, including verification from a bare
+artifact digest; the remainder are tracked as known gaps on the way to a `1.0.0` that
+clears the suite end to end — Rekor v2 transparency-log entries and a few stricter
+rejection checks. Until then the package stays in `0.x`. See [Scope](#scope) for what is
+verified versus rejected as unsupported.
 
 ## Exceptions
 

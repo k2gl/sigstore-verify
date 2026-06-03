@@ -15,6 +15,7 @@ use K2gl\Sigstore\Internal\Asn1;
 use K2gl\Sigstore\Internal\Certificate;
 use K2gl\Sigstore\Internal\CertificateChainVerifier;
 use K2gl\Sigstore\Internal\Ecdsa;
+use K2gl\Sigstore\Internal\EcdsaPrehashed;
 use K2gl\Sigstore\Internal\Json;
 use K2gl\Sigstore\Internal\MerkleInclusion;
 use K2gl\Sigstore\Internal\Pem;
@@ -58,6 +59,7 @@ use function K2gl\PHPUnitFluentAssertions\fact;
 #[CoversClass(Sct::class)]
 #[CoversClass(Asn1::class)]
 #[CoversClass(Ecdsa::class)]
+#[CoversClass(EcdsaPrehashed::class)]
 #[CoversClass(Json::class)]
 #[CoversClass(TrustRootJson::class)]
 #[CoversClass(Pem::class)]
@@ -119,6 +121,56 @@ final class VerifyArtifactTest extends TestCase
         );
 
         $this->addToAssertionCount(1);
+    }
+
+    public function testVerifiesFromArtifactDigest(): void
+    {
+        (new SigstoreVerifier)->verifyArtifactDigest(
+            bundle: $this->bundle(),
+            algorithm: 'sha256',
+            hexDigest: hash('sha256', $this->artifact()),
+            trustedRoot: $this->trustedRoot(),
+            identityPolicy: $this->policy(),
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testVerifyArtifactDigestFromJson(): void
+    {
+        (new SigstoreVerifier)->verifyArtifactDigestFromJson(
+            bundleJson: self::fixture('conformance-msgsig-v0.3.json'),
+            algorithm: 'sha256',
+            hexDigest: hash('sha256', $this->artifact()),
+            trustedRootJson: self::fixture('trusted-root-public-good.json'),
+            identityPolicy: $this->policy(),
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testRejectsWrongArtifactDigest(): void
+    {
+        $this->expectException(VerificationFailedException::class);
+        (new SigstoreVerifier)->verifyArtifactDigest(
+            bundle: $this->bundle(),
+            algorithm: 'sha256',
+            hexDigest: hash('sha256', $this->artifact() . 'tampered'),
+            trustedRoot: $this->trustedRoot(),
+            identityPolicy: $this->policy(),
+        );
+    }
+
+    public function testRejectsNonHexArtifactDigest(): void
+    {
+        $this->expectException(VerificationFailedException::class);
+        (new SigstoreVerifier)->verifyArtifactDigest(
+            bundle: $this->bundle(),
+            algorithm: 'sha256',
+            hexDigest: 'not-a-hex-digest',
+            trustedRoot: $this->trustedRoot(),
+            identityPolicy: $this->policy(),
+        );
     }
 
     public function testRejectsWrongArtifact(): void

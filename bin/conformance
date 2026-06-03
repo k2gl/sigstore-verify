@@ -140,9 +140,22 @@ final class ConformanceClient
             return;
         }
 
+        if ($artifactBytes === null) {
+            [$algorithm, $hexDigest] = $this->singleArtifactDigest($artifactDigests);
+            $verifier->verifyArtifactDigestWithPublicKey(
+                bundle: $bundle,
+                algorithm: $algorithm,
+                hexDigest: $hexDigest,
+                publicKeyPem: $publicKeyPem,
+                trustedRoot: $trustedRoot,
+            );
+
+            return;
+        }
+
         $verifier->verifyArtifactWithPublicKey(
             bundle: $bundle,
-            artifact: $this->requireArtifactBytes($artifactBytes),
+            artifact: $artifactBytes,
             publicKeyPem: $publicKeyPem,
             trustedRoot: $trustedRoot,
         );
@@ -168,9 +181,22 @@ final class ConformanceClient
             return;
         }
 
+        if ($artifactBytes === null) {
+            [$algorithm, $hexDigest] = $this->singleArtifactDigest($artifactDigests);
+            $verifier->verifyArtifactDigest(
+                bundle: $bundle,
+                algorithm: $algorithm,
+                hexDigest: $hexDigest,
+                trustedRoot: $trustedRoot,
+                identityPolicy: $identityPolicy,
+            );
+
+            return;
+        }
+
         $verifier->verifyArtifact(
             bundle: $bundle,
-            artifact: $this->requireArtifactBytes($artifactBytes),
+            artifact: $artifactBytes,
             trustedRoot: $trustedRoot,
             identityPolicy: $identityPolicy,
         );
@@ -247,11 +273,22 @@ final class ConformanceClient
         ]];
     }
 
-    private function requireArtifactBytes(?string $artifactBytes): string
+    /**
+     * The single algorithm => hex digest pair supplied in digest-only mode.
+     *
+     * @param  array<string, string> $artifactDigests
+     * @return array{0: string, 1: string} the algorithm and its lower-case hex digest
+     */
+    private function singleArtifactDigest(array $artifactDigests): array
     {
-        return $artifactBytes ?? throw new UnsupportedBundleException(
-            'Message-signature verification needs the artifact bytes; a "sha256:" digest is not enough.'
-        );
+        if (count($artifactDigests) !== 1) {
+            throw new UnsupportedBundleException(
+                'Digest verification needs exactly one artifact digest.'
+            );
+        }
+        $algorithm = array_key_first($artifactDigests);
+
+        return [$algorithm, $artifactDigests[$algorithm]];
     }
 
     private function unsupportedSigning(): int

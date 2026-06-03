@@ -214,6 +214,95 @@ final class SigstoreVerifier
         $this->verifyTransparencyLog($bundle, $trustedRoot, bin2hex($signature->messageDigest), $signature->signature);
     }
 
+    /**
+     * Convenience wrapper of {@see verifyArtifactDigest()} for JSON-string inputs.
+     */
+    public function verifyArtifactDigestFromJson(
+        string $bundleJson,
+        string $algorithm,
+        string $hexDigest,
+        string $trustedRootJson,
+        IdentityPolicy $identityPolicy,
+    ): void {
+        $this->verifyArtifactDigest(
+            Bundle::fromJson($bundleJson),
+            $algorithm,
+            $hexDigest,
+            TrustedRoot::fromJson($trustedRootJson),
+            $identityPolicy,
+        );
+    }
+
+    /**
+     * Verify a keyless message-signature bundle against a bare artifact digest,
+     * when the artifact bytes are unavailable. $algorithm is the digest's hash
+     * function ("sha256" / "sha384" / "sha512") and must match the one the
+     * bundle records; $hexDigest is its lower-case hex value. Sigstore's ECDSA
+     * and RSA schemes sign the digest, so this verifies without the artifact.
+     * Returns nothing: it throws unless every step passes.
+     */
+    public function verifyArtifactDigest(
+        Bundle $bundle,
+        string $algorithm,
+        string $hexDigest,
+        TrustedRoot $trustedRoot,
+        IdentityPolicy $identityPolicy,
+    ): void {
+        $this->requireCertificateBundle($bundle);
+        $signature = $this->messageSignature($bundle);
+
+        $signingTime = $this->signingTime($bundle, $trustedRoot, $signature->signature);
+        $leaf = $this->verifyCertificate($bundle, $trustedRoot, $signingTime);
+
+        $this->verifyArtifactDigestSignature($signature, $algorithm, $hexDigest, $leaf->signatureKey());
+        $this->verifyTransparencyLog($bundle, $trustedRoot, bin2hex($signature->messageDigest), $signature->signature);
+        $identityPolicy->verify($leaf->subjectAlternativeNames(), $leaf->oidcIssuer());
+    }
+
+    /**
+     * Convenience wrapper of {@see verifyArtifactDigestWithPublicKey()} for JSON-string inputs.
+     */
+    public function verifyArtifactDigestWithPublicKeyFromJson(
+        string $bundleJson,
+        string $algorithm,
+        string $hexDigest,
+        string $publicKeyPem,
+        string $trustedRootJson,
+        ?string $expectedHint = null,
+    ): void {
+        $this->verifyArtifactDigestWithPublicKey(
+            Bundle::fromJson($bundleJson),
+            $algorithm,
+            $hexDigest,
+            $publicKeyPem,
+            TrustedRoot::fromJson($trustedRootJson),
+            $expectedHint,
+        );
+    }
+
+    /**
+     * Verify a public-key message-signature bundle against a bare artifact
+     * digest and the PEM-encoded key the caller trusts out of band. See
+     * {@see verifyArtifactDigest()} for the digest arguments. When $expectedHint
+     * is given, the bundle's key hint must match it. Returns nothing: it throws
+     * unless every step passes.
+     */
+    public function verifyArtifactDigestWithPublicKey(
+        Bundle $bundle,
+        string $algorithm,
+        string $hexDigest,
+        string $publicKeyPem,
+        TrustedRoot $trustedRoot,
+        ?string $expectedHint = null,
+    ): void {
+        $this->requirePublicKeyBundle($bundle, $expectedHint);
+        $signature = $this->messageSignature($bundle);
+
+        $this->signingTime($bundle, $trustedRoot, $signature->signature);
+        $this->verifyArtifactDigestSignature($signature, $algorithm, $hexDigest, SignatureKey::fromPem($publicKeyPem));
+        $this->verifyTransparencyLog($bundle, $trustedRoot, bin2hex($signature->messageDigest), $signature->signature);
+    }
+
     /** The bundle's DSSE in-toto attestation envelope, or a rejection if it carries none. */
     private function attestationEnvelope(Bundle $bundle): Envelope
     {
@@ -289,13 +378,66 @@ final class SigstoreVerifier
         string $artifact,
         SignatureKey $key,
     ): void {
+        $digest = hash($this->messageDigestAlgorithm($signature), $artifact, true);
+
+        $this->verifyMessageSignature($signature, $digest, $key);
+    }
+
+    /**
+     * Verify a message signature against a caller-supplied artifact digest,
+     * for bundles verified from a bare digest rather than the artifact bytes.
+     * The supplied algorithm must match the one the bundle records.
+     */
+    private function verifyArtifactDigestSignature(
+        MessageSignature $signature,
+        string $algorithm,
+        string $hexDigest,
+        SignatureKey $key,
+    ): void {
+        $expected = $this->messageDigestAlgorithm($signature);
+
+        if ($algorithm !== $expected) {
+            throw new VerificationFailedException(sprintf(
+                'Supplied digest algorithm "%s" does not match the bundle digest algorithm "%s".',
+                $algorithm,
+                $expected,
+            ));
+        }
+
+        if (! ctype_xdigit($hexDigest) || strlen($hexDigest) % 2 !== 0) {
+            throw new VerificationFailedException('Artifact digest is not a hex string.');
+        }
+
+        $this->verifyMessageSignature($signature, (string) hex2bin($hexDigest), $key);
+    }
+
+    /** The raw digest matches the recorded one and the signature verifies under the signing key. */
+    private function verifyMessageSignature(
+        MessageSignature $signature,
+        string $rawDigest,
+        SignatureKey $key,
+    ): void {
         if ($key->isEd25519()) {
             throw new UnsupportedBundleException(
                 'Ed25519 message signatures are not supported in this version; use a DSSE bundle for Ed25519.'
             );
         }
 
-        $digest = match ($signature->hashAlgorithm) {
+        if (! hash_equals($signature->messageDigest, $rawDigest)) {
+            throw new VerificationFailedException('Artifact does not match the bundle message digest.');
+        }
+
+        if (! $key->verifyDigest($rawDigest, $signature->signature)) {
+            throw new VerificationFailedException(
+                'Message signature does not verify against the signing public key.'
+            );
+        }
+    }
+
+    /** The hash function the bundle's message digest uses, as a PHP {@see hash()} algorithm name. */
+    private function messageDigestAlgorithm(MessageSignature $signature): string
+    {
+        return match ($signature->hashAlgorithm) {
             'SHA2_256' => 'sha256',
             'SHA2_384' => 'sha384',
             'SHA2_512' => 'sha512',
@@ -304,16 +446,6 @@ final class SigstoreVerifier
                 $signature->hashAlgorithm,
             )),
         };
-
-        if (! hash_equals($signature->messageDigest, hash($digest, $artifact, true))) {
-            throw new VerificationFailedException('Artifact does not match the bundle message digest.');
-        }
-
-        if (! $key->verify($artifact, $signature->signature)) {
-            throw new VerificationFailedException(
-                'Message signature does not verify against the signing public key.'
-            );
-        }
     }
 
     /** Parse the leaf certificate and verify it chains to a trusted Fulcio root at the signing time. */
