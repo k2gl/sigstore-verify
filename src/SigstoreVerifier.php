@@ -500,13 +500,13 @@ final class SigstoreVerifier
         if ($genTime !== null) {
             return $genTime;
         }
-        $entry = $bundle->tlogEntries[0] ?? null;
+        $integratedTime = ($bundle->tlogEntries[0] ?? null)?->integratedTime;
 
-        if ($entry === null) {
+        if ($integratedTime === null) {
             throw new VerificationFailedException('Bundle has no trusted time source.');
         }
 
-        return (new DateTimeImmutable)->setTimestamp($entry->integratedTime);
+        return (new DateTimeImmutable)->setTimestamp($integratedTime);
     }
 
     /** The DSSE signature bytes an RFC 3161 timestamp would cover. */

@@ -18,11 +18,16 @@ use K2gl\Sigstore\Internal\Ecdsa;
 use K2gl\Sigstore\Internal\EcdsaPrehashed;
 use K2gl\Sigstore\Internal\Json;
 use K2gl\Sigstore\Internal\MerkleInclusion;
+use K2gl\Sigstore\Internal\Cms;
 use K2gl\Sigstore\Internal\Pem;
 use K2gl\Sigstore\Internal\RekorVerifier;
+use K2gl\Sigstore\Internal\Rfc3161Verifier;
 use K2gl\Sigstore\Internal\Sct;
 use K2gl\Sigstore\Internal\SctVerifier;
+use K2gl\Sigstore\Internal\SignatureKey;
+use K2gl\Sigstore\Internal\TimeStampToken;
 use K2gl\Sigstore\Internal\TrustRootJson;
+use K2gl\Sigstore\Rfc3161Timestamp;
 use K2gl\Sigstore\MessageSignature;
 use K2gl\Sigstore\SigstoreVerifier;
 use K2gl\Sigstore\TlogEntry;
@@ -60,6 +65,11 @@ use function K2gl\PHPUnitFluentAssertions\fact;
 #[CoversClass(Asn1::class)]
 #[CoversClass(Ecdsa::class)]
 #[CoversClass(EcdsaPrehashed::class)]
+#[CoversClass(SignatureKey::class)]
+#[CoversClass(Rfc3161Verifier::class)]
+#[CoversClass(Rfc3161Timestamp::class)]
+#[CoversClass(TimeStampToken::class)]
+#[CoversClass(Cms::class)]
 #[CoversClass(Json::class)]
 #[CoversClass(TrustRootJson::class)]
 #[CoversClass(Pem::class)]
@@ -143,6 +153,22 @@ final class VerifyArtifactTest extends TestCase
             algorithm: 'sha256',
             hexDigest: hash('sha256', $this->artifact()),
             trustedRootJson: self::fixture('trusted-root-public-good.json'),
+            identityPolicy: $this->policy(),
+        );
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testVerifiesRekorV2MessageSignatureBundle(): void
+    {
+        // A Rekor v2 bundle (hashedrekord 0.0.2): the entry has no integrated
+        // time (an RFC 3161 TSA timestamp stands in) and an Ed25519-signed
+        // checkpoint, verified from the artifact digest the entry records.
+        (new SigstoreVerifier)->verifyArtifactDigest(
+            bundle: Bundle::fromJson(self::fixture('conformance-rekor2-msgsig.json')),
+            algorithm: 'sha256',
+            hexDigest: 'a0cfc71271d6e278e57cd332ff957c3f7043fdda354c4cbb190a30d56efa01bf',
+            trustedRoot: TrustedRoot::fromJson(self::fixture('trusted-root-staging.json')),
             identityPolicy: $this->policy(),
         );
 

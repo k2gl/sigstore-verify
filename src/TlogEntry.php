@@ -10,7 +10,8 @@ use K2gl\Sigstore\Internal\Json;
  * One Rekor transparency-log entry from a bundle's verification material: which
  * log it is in (log id), when it was integrated, the canonicalized entry body,
  * and the evidence of inclusion — an inclusion promise (signed entry timestamp)
- * and/or a Merkle inclusion proof.
+ * and/or a Merkle inclusion proof. The integrated time is absent for Rekor v2
+ * entries, whose signing time comes from an RFC 3161 timestamp instead.
  */
 final class TlogEntry
 {
@@ -18,7 +19,7 @@ final class TlogEntry
         public readonly int $logIndex,
         public readonly string $logId,
         public readonly string $kind,
-        public readonly int $integratedTime,
+        public readonly ?int $integratedTime,
         public readonly ?string $signedEntryTimestamp,
         public readonly ?InclusionProof $inclusionProof,
         public readonly string $canonicalizedBody,
@@ -49,7 +50,7 @@ final class TlogEntry
             logIndex: Json::int($data, 'logIndex'),
             logId: $logId,
             kind: Json::string($kindVersion, 'kind'),
-            integratedTime: Json::int($data, 'integratedTime'),
+            integratedTime: isset($data['integratedTime']) ? Json::int($data, 'integratedTime') : null,
             signedEntryTimestamp: $signedEntryTimestamp,
             inclusionProof: $inclusionProof,
             canonicalizedBody: Json::base64($data, 'canonicalizedBody'),
