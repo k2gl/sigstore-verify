@@ -48,12 +48,6 @@ jobs:
             test_verify?PATH-rekor2-checkpoint-two-sigs-cosigned?
             test_verify?PATH-rekor2-checkpoint-two-sigs-from-origin?
             test_verify?DIGEST-bundle-with-sct-with-extensions?
-            test_verify?DIGEST-happy-path-v0.1?
-            test_verify?DIGEST-happy-path-v0.2?
-            test_verify?DIGEST-happy-path-v0.3?
-            test_verify?DIGEST-happy-path-v0.3-new-mediaType?
-            test_verify?DIGEST-managed-key-happy-path?
-            test_verify?DIGEST-managed-key-and-trusted-root?
             test_verify?DIGEST-rekor2-happy-path?
             test_verify?DIGEST-rekor2-timestamp-with-embedded-cert?
             test_verify?DIGEST-rekor2-timestamp-without-embedded-cert?

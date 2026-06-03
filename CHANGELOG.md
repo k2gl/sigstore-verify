@@ -14,8 +14,14 @@ Verification hardening toward 1.0.0 conformance parity (fail-closed).
   log's key id). A note signed by some other key is rejected even if the signature itself is
   well-formed. Adds the `CheckpointSignature` value object; `Checkpoint::signatures()` now returns
   `list<CheckpointSignature>` rather than raw signature strings.
+- **Verification from an artifact digest** — `verifyArtifactDigest()` and
+  `verifyArtifactDigestWithPublicKey()` (with `...FromJson()` shorthands) verify a
+  message-signature bundle against a bare artifact digest, for when the artifact bytes are
+  unavailable. Sigstore's ECDSA and RSA schemes sign the digest, so the signature is checked
+  against the supplied digest directly; the caller passes the hash algorithm and hex digest, and
+  the algorithm must match the one the bundle records.
 
-Against sigstore-conformance **v0.0.28** the suite is now 100 pass / 26 xfail / 6 skip.
+Against sigstore-conformance **v0.0.28** the suite is now 106 pass / 20 xfail / 6 skip.
 
 ## 0.7.0
 

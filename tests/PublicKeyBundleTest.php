@@ -16,8 +16,10 @@ use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\IdentityPolicy;
 use K2gl\Sigstore\InclusionProof;
 use K2gl\Sigstore\Internal\Ecdsa;
+use K2gl\Sigstore\Internal\EcdsaPrehashed;
 use K2gl\Sigstore\Internal\MerkleInclusion;
 use K2gl\Sigstore\Internal\OpensslVerifier;
+use K2gl\Sigstore\Internal\RsaPrehashed;
 use K2gl\Sigstore\Internal\SignatureKey;
 use K2gl\Sigstore\MessageSignature;
 use K2gl\Sigstore\SigstoreVerifier;
@@ -50,6 +52,8 @@ use function K2gl\PHPUnitFluentAssertions\fact;
 #[CoversClass(Bundle::class)]
 #[CoversClass(SignatureKey::class)]
 #[CoversClass(OpensslVerifier::class)]
+#[CoversClass(EcdsaPrehashed::class)]
+#[CoversClass(RsaPrehashed::class)]
 #[CoversClass(MessageSignature::class)]
 #[CoversClass(TlogEntry::class)]
 #[CoversClass(InclusionProof::class)]
@@ -124,6 +128,56 @@ final class PublicKeyBundleTest extends TestCase
             $this->trustedRoot(),
         );
         $this->addToAssertionCount(1);
+    }
+
+    #[DataProvider('artifactAlgorithms')]
+    public function testVerifiesArtifactDigestPublicKeyBundle(string $algorithm, string $hashAlgorithm): void
+    {
+        [$private, $publicKeyPem] = $this->keyPair($algorithm);
+        $signature = $private->sign(self::ARTIFACT);
+        $bundle = $this->artifactBundle($hashAlgorithm, $signature);
+        $hash = $this->digest($hashAlgorithm);
+
+        (new SigstoreVerifier)->verifyArtifactDigestWithPublicKey(
+            $bundle,
+            $hash,
+            hash($hash, self::ARTIFACT),
+            $publicKeyPem,
+            $this->trustedRoot(),
+        );
+        $this->addToAssertionCount(1);
+    }
+
+    public function testRejectsWrongArtifactDigest(): void
+    {
+        [$private, $publicKeyPem] = $this->keyPair('ecdsa-p256');
+        $signature = $private->sign(self::ARTIFACT);
+        $bundle = $this->artifactBundle('SHA2_256', $signature);
+
+        $this->expectException(VerificationFailedException::class);
+        (new SigstoreVerifier)->verifyArtifactDigestWithPublicKey(
+            $bundle,
+            'sha256',
+            hash('sha256', 'a different artifact'),
+            $publicKeyPem,
+            $this->trustedRoot(),
+        );
+    }
+
+    public function testRejectsDigestAlgorithmMismatch(): void
+    {
+        [$private, $publicKeyPem] = $this->keyPair('ecdsa-p256');
+        $signature = $private->sign(self::ARTIFACT);
+        $bundle = $this->artifactBundle('SHA2_256', $signature);
+
+        $this->expectException(VerificationFailedException::class);
+        (new SigstoreVerifier)->verifyArtifactDigestWithPublicKey(
+            $bundle,
+            'sha512',
+            hash('sha512', self::ARTIFACT),
+            $publicKeyPem,
+            $this->trustedRoot(),
+        );
     }
 
     public function testMatchesExpectedHint(): void
