@@ -32,28 +32,5 @@ jobs:
           skip-signing: true
           environment: production
           skip-cpython-release-tests: true
-          # Known gaps tracked for the 1.0.0 conformance-parity release. Patterns use
-          # "?" in place of the "[" / "]" of the parametrized test id, because the suite
-          # fnmatch-es them against the full node name. Strict xfail: if one of these
-          # starts passing, CI fails so the entry can be removed.
-          xfail: >-
-            test_verify?PATH-bundle-with-sct-with-extensions?
-            test_verify?PATH-rekor2-happy-path?
-            test_verify?PATH-rekor2-timestamp-with-embedded-cert?
-            test_verify?PATH-rekor2-timestamp-without-embedded-cert?
-            test_verify?PATH-rekor2-timestamp-with-expired-cert-chain?
-            test_verify?PATH-rekor2-checkpoint-cosigned?
-            test_verify?PATH-rekor2-checkpoint-multiple-cosigs?
-            test_verify?PATH-rekor2-checkpoint-origin-not-first?
-            test_verify?PATH-rekor2-checkpoint-two-sigs-cosigned?
-            test_verify?PATH-rekor2-checkpoint-two-sigs-from-origin?
-            test_verify?DIGEST-bundle-with-sct-with-extensions?
-            test_verify?DIGEST-rekor2-happy-path?
-            test_verify?DIGEST-rekor2-timestamp-with-embedded-cert?
-            test_verify?DIGEST-rekor2-timestamp-without-embedded-cert?
-            test_verify?DIGEST-rekor2-timestamp-with-expired-cert-chain?
-            test_verify?DIGEST-rekor2-checkpoint-cosigned?
-            test_verify?DIGEST-rekor2-checkpoint-multiple-cosigs?
-            test_verify?DIGEST-rekor2-checkpoint-origin-not-first?
-            test_verify?DIGEST-rekor2-checkpoint-two-sigs-cosigned?
-            test_verify?DIGEST-rekor2-checkpoint-two-sigs-from-origin?
+          # The verifier passes the suite's verification cases in full, so there are no
+          # expected failures: any failing case is a real regression and fails CI.

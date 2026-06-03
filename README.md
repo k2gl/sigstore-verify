@@ -225,8 +225,11 @@ or by a **public key** you supply. The signing key may be **ECDSA over NIST
 P-256/P-384/P-521**, **RSA** (PKCS#1 v1.5), or — for DSSE — **Ed25519**. It verifies any
 **RFC 3161 timestamp** the bundle carries against a trusted Timestamp Authority, and (for
 keyless bundles) the certificate's embedded **SCT** against the trusted root's
-**certificate-transparency** logs when it provides them. The following are intentionally out
-of scope and are rejected with `UnsupportedBundleException` rather than skipped:
+**certificate-transparency** logs when it provides them. The **Rekor** transparency-log entry
+is proven and bound to the bundle for both log generations — **v1** (hashedrekord / dsse /
+intoto) and **v2** (hashedrekord 0.0.2, whose checkpoint is Ed25519-signed and whose time
+comes from an RFC 3161 timestamp). The following are intentionally out of scope and are
+rejected with `UnsupportedBundleException` rather than skipped:
 
 - Ed25519 **message** signatures (cosign signs the digest rather than the artifact, so the
   scheme is ambiguous), and RSASSA-PSS signatures.
@@ -239,11 +242,9 @@ or fetch and refresh it with `TrustedRoot::fromTuf()` / `TrustedRoot::fromSigsto
 
 The verifier is exercised against the official
 [sigstore-conformance](https://github.com/sigstore/sigstore-conformance) suite on every push
-(verification only). Most of the suite's verification cases pass today, including verification from a bare
-artifact digest; the remainder are tracked as known gaps on the way to a `1.0.0` that
-clears the suite end to end — Rekor v2 transparency-log entries and a few stricter
-rejection checks. Until then the package stays in `0.x`. See [Scope](#scope) for what is
-verified versus rejected as unsupported.
+(verification only) and **passes it in full** — every verification case, across Rekor v1 and
+v2 transparency-log entries, keyless and public-key bundles, and artifact-bytes and bare-digest
+inputs. See [Scope](#scope) for what is verified versus rejected as unsupported.
 
 ## Exceptions
 

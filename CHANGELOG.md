@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Verification hardening toward 1.0.0 conformance parity (fail-closed).
+Verification hardening that completes sigstore-conformance parity (fail-closed).
 
 - **Rekor entry binding** — a Merkle inclusion proof is now required for bundle media type
   v0.2+ (an inclusion promise alone is no longer enough; v0.1 bundles may still rely on the
@@ -20,8 +20,16 @@ Verification hardening toward 1.0.0 conformance parity (fail-closed).
   unavailable. Sigstore's ECDSA and RSA schemes sign the digest, so the signature is checked
   against the supplied digest directly; the caller passes the hash algorithm and hex digest, and
   the algorithm must match the one the bundle records.
+- **Rekor v2 transparency-log entries** — `hashedrekord` `0.0.2` entries are now proven and
+  bound. Their fields live under `spec.hashedRekordV002` (the digest is stored base64; the
+  signing certificate as raw DER); the entry carries no integrated time, so the signing time
+  comes from the bundle's RFC 3161 timestamp (`TlogEntry::$integratedTime` is now nullable); and
+  the checkpoint note is Ed25519-signed (the note signature scheme now follows the log key —
+  ECDSA for v1, Ed25519 for v2). Co-signed checkpoints are accepted: the log's own signature
+  must verify, additional notary signatures are ignored.
 
-Against sigstore-conformance **v0.0.28** the suite is now 106 pass / 20 xfail / 6 skip.
+With these the verifier now **passes the sigstore-conformance v0.0.28 verification suite in
+full**: 126 pass / 0 xfail / 6 skip (the skips are signing-only cases).
 
 ## 0.7.0
 

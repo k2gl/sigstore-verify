@@ -26,6 +26,10 @@ use JsonException;
  *    keyless bundle, the certificate) the entry was logged with are the ones the
  *    bundle carries.
  *
+ * Both Rekor entry generations are bound: the v1 hashedrekord/dsse/intoto bodies
+ * and the v2 hashedrekord (0.0.2, fields under spec.hashedRekordV002). The
+ * checkpoint note signature follows the log key — ECDSA for v1, Ed25519 for v2.
+ *
  * Every failure throws; an entry that cannot be bound or proven is never
  * accepted.
  *
@@ -116,22 +120,18 @@ final class RekorVerifier
         }
 
         // Rekor's checkpoint key hint is the first four bytes of the log's key
-        // id (the SHA-256 of its public key). Only a signature line bearing that
-        // hint is the entry's own log; ignore co-signatures from other notaries.
+        // id. Only a signature line bearing that hint is the entry's own log;
+        // ignore co-signatures from other notaries. The note signature scheme
+        // follows the log key — ECDSA (DER) for Rekor v1, Ed25519 for Rekor v2.
         $expectedKeyHint = substr($log->logId, 0, 4);
+        $key = SignatureKey::fromPem($log->publicKeyPem);
 
         foreach ($checkpoint->signatures() as $signature) {
             if (! hash_equals($expectedKeyHint, $signature->keyHint)) {
                 continue;
             }
 
-            $valid = Ecdsa::verifyDer(
-                message: $checkpoint->signedBody(),
-                derSignature: $signature->signature,
-                publicKeyPem: $log->publicKeyPem,
-            );
-
-            if ($valid) {
+            if ($key->verify($checkpoint->signedBody(), $signature->signature)) {
                 return;
             }
         }
@@ -195,6 +195,21 @@ final class RekorVerifier
     private function bodySigningMaterial(TlogEntry $entry): array
     {
         $body = $this->decodeBody($entry);
+
+        if ($this->isHashedRekordV2($body)) {
+            // Rekor v2 hashedrekord (0.0.2): the certificate is stored as raw
+            // DER under verifier.x509Certificate, not as a base64 PEM.
+            $signature = self::base64(self::dig($body, 'spec', 'hashedRekordV002', 'signature', 'content'));
+            $certificateDer = self::base64(
+                self::dig($body, 'spec', 'hashedRekordV002', 'signature', 'verifier', 'x509Certificate', 'rawBytes'),
+            );
+
+            if ($signature === null) {
+                throw new VerificationFailedException('Rekor entry body has no signature to bind.');
+            }
+
+            return [$signature, $certificateDer];
+        }
 
         [$signature, $certificateDer] = match ($entry->kind) {
             'hashedrekord' => [
@@ -261,20 +276,43 @@ final class RekorVerifier
     {
         $body = $this->decodeBody($entry);
 
-        $hash = match ($entry->kind) {
-            'intoto' => self::dig($body, 'spec', 'content', 'payloadHash', 'value'),
-            'dsse' => self::dig($body, 'spec', 'payloadHash', 'value'),
-            'hashedrekord' => self::dig($body, 'spec', 'data', 'hash', 'value'),
-            default => throw new UnsupportedBundleException(
-                sprintf('Unsupported Rekor entry kind "%s"; cannot bind it to the bundle.', $entry->kind),
-            ),
-        };
+        if ($this->isHashedRekordV2($body)) {
+            // Rekor v2 records the digest as base64; bind it as hex like the rest.
+            $hash = self::hexFromBase64(self::dig($body, 'spec', 'hashedRekordV002', 'data', 'digest'));
+        } else {
+            $hash = match ($entry->kind) {
+                'intoto' => self::dig($body, 'spec', 'content', 'payloadHash', 'value'),
+                'dsse' => self::dig($body, 'spec', 'payloadHash', 'value'),
+                'hashedrekord' => self::dig($body, 'spec', 'data', 'hash', 'value'),
+                default => throw new UnsupportedBundleException(
+                    sprintf('Unsupported Rekor entry kind "%s"; cannot bind it to the bundle.', $entry->kind),
+                ),
+            };
+        }
 
         if (! is_string($hash) || $hash === '') {
             throw new VerificationFailedException('Rekor entry body has no hash to bind.');
         }
 
         return $hash;
+    }
+
+    /**
+     * A Rekor v2 hashedrekord (0.0.2) body stores its fields under spec.hashedRekordV002.
+     *
+     * @param array<string, mixed> $body
+     */
+    private function isHashedRekordV2(array $body): bool
+    {
+        return is_array(self::dig($body, 'spec', 'hashedRekordV002'));
+    }
+
+    /** Base64-decode a value and re-encode it as lower-case hex, or null when absent or invalid. */
+    private static function hexFromBase64(mixed $value): ?string
+    {
+        $decoded = self::base64($value);
+
+        return $decoded === null ? null : bin2hex($decoded);
     }
 
     /** Walk a decoded JSON tree by successive object keys, returning null on any miss. */
