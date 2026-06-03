@@ -1,8 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 — 2026-06-03
 
-Verification hardening that completes sigstore-conformance parity (fail-closed).
+First stable release. The verifier **passes Sigstore's official sigstore-conformance suite
+in full** (verification), and its public API — `SigstoreVerifier`, `Bundle`, `TrustedRoot`,
+`IdentityPolicy`, the bundle and trust value objects, and the `Exception\*` hierarchy — is
+now covered by **semantic versioning**. The entries below are the verification hardening that
+completed conformance parity over 0.7.0 (fail-closed).
 
 - **Rekor entry binding** — a Merkle inclusion proof is now required for bundle media type
   v0.2+ (an inclusion promise alone is no longer enough; v0.1 bundles may still rely on the
