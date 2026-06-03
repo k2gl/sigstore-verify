@@ -1,6 +1,6 @@
 {
   "name": "k2gl/sigstore-verify",
-  "description": "Offline, fail-closed PHP verifier for Sigstore bundles: certificate chain to a Fulcio root, DSSE signature, Rekor transparency-log proof and identity policy, returning a verified in-toto Statement.",
+  "description": "Offline, fail-closed PHP verifier for Sigstore bundles: Fulcio certificate chain, DSSE or message signature, Rekor v1/v2 transparency-log proof, RFC 3161 timestamp, certificate transparency and identity policy. Passes the official sigstore-conformance suite.",
   "homepage": "https://github.com/k2gl/sigstore-verify",
   "type": "library",
   "license": "MIT",
@@ -39,6 +39,9 @@
     "phpstan/phpstan": "^2.1",
     "laravel/pint": "~1.20.0",
     "k2gl/phpunit-fluent-assertions": "^12"
+  },
+  "suggest": {
+    "ext-sodium": "Ed25519 verification — DSSE Ed25519 keys and Rekor v2 checkpoint notes"
   },
   "autoload": {
     "psr-4": {

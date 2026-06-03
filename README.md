@@ -9,7 +9,11 @@
 
 Offline, **fail-closed** PHP verifier for [Sigstore](https://www.sigstore.dev/) bundles.
 Given a `.sigstore.json` bundle, a trusted root, and the identity you expect, it verifies
-the whole chain of evidence and returns the authenticated content — or throws.
+the whole chain of evidence and returns the authenticated content — or throws. It is
+validated against Sigstore's official
+[conformance suite](https://github.com/sigstore/sigstore-conformance), which it **passes in
+full** — every verification case, across Rekor v1 and v2 entries — so its behaviour matches
+the reference clients.
 
 It handles both bundle shapes: **DSSE attestations** (`cosign attest`, npm provenance,
 SLSA provenance) and **message signatures** (`cosign sign-blob` artifact signatures), with
@@ -52,7 +56,8 @@ composer require k2gl/sigstore-verify
 ```
 
 Requires PHP 8.1+, `ext-openssl`, and [`phpseclib/phpseclib`](https://phpseclib.com/)
-(certificate parsing). Pulls in [`k2gl/in-toto-attestation`](https://github.com/k2gl/in-toto-attestation)
+(certificate parsing); `ext-sodium` is needed for Ed25519 — DSSE Ed25519 keys and Rekor v2
+checkpoint notes. Pulls in [`k2gl/in-toto-attestation`](https://github.com/k2gl/in-toto-attestation)
 and [`k2gl/dsse`](https://github.com/k2gl/dsse).
 
 ## The trusted root
