@@ -327,4 +327,7 @@ $autoload = is_file(__DIR__ . '/../vendor/autoload.php')
 
 require $autoload;
 
+/** @var list<string> $argv */
+$argv = $_SERVER['argv'] ?? [];
+
 exit((new ConformanceClient)->run(array_slice($argv, 1)));
