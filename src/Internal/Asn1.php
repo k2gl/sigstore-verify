@@ -156,7 +156,7 @@ final class Asn1
     public static function encodeLength(int $length): string
     {
         if ($length < 0x80) {
-            return chr($length);
+            return chr($length & 0xFF);
         }
         $bytes = '';
 
@@ -165,6 +165,6 @@ final class Asn1
             $length >>= 8;
         }
 
-        return chr(0x80 | strlen($bytes)) . $bytes;
+        return chr((0x80 | strlen($bytes)) & 0xFF) . $bytes;
     }
 }
