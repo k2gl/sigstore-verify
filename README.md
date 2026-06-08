@@ -132,6 +132,49 @@ Sigstore bundles carry in-toto Statement **v0.1** and **v1**; authentication doe
 on the schema version, so the verifier hands back the envelope and leaves statement modelling
 to you.
 
+### Pinning the signing identity
+
+The identity policy is mandatory for keyless bundles. Beyond an exact SAN you can
+match the signer with a pattern — useful because a CI signing identity embeds the
+ref or workflow, which changes between runs — or build the policy with a provider
+factory:
+
+```php
+use K2gl\Sigstore\IdentityPolicy;
+
+// Any workflow, any ref, in one repository (GitHub Actions OIDC):
+$policy = IdentityPolicy::githubActions('acme/app');
+
+// A specific workflow, on tag pushes only:
+$policy = IdentityPolicy::githubActions('acme/app', 'release.yml', 'refs/tags/v1.2.3');
+
+// GitLab CI (gitlab.com, or pass host: for a self-managed instance):
+$policy = IdentityPolicy::gitlabCi('my-group/my-project', ref: 'refs/heads/main');
+
+// Anything else, by PCRE pattern over the SAN:
+$policy = IdentityPolicy::sanRegex(
+    '#^https://github\.com/acme/app/.+@refs/tags/.+$#',
+    'https://token.actions.githubusercontent.com',
+);
+```
+
+### Binding the artifact
+
+Pinning the identity proves *who* signed; it does not prove the attestation is
+about *your* artifact. Pass a `SubjectPolicy` to require the attestation's subject
+to include a specific digest — then one `verify()` call enforces both, fail-closed:
+
+```php
+use K2gl\Sigstore\SubjectPolicy;
+
+$envelope = (new SigstoreVerifier())->verify(
+    bundle: $bundle,
+    trustedRoot: $trustedRoot,
+    identityPolicy: $policy,
+    subjectPolicy: new SubjectPolicy('sha256', hash_file('sha256', 'artifact.bin')),
+);
+```
+
 ### Reading SLSA provenance (Statement v1)
 
 ```php

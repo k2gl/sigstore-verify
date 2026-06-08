@@ -70,11 +70,13 @@ final class SigstoreVerifier
         string $bundleJson,
         string $trustedRootJson,
         IdentityPolicy $identityPolicy,
+        ?SubjectPolicy $subjectPolicy = null,
     ): Envelope {
         return $this->verify(
             bundle: Bundle::fromJson($bundleJson),
             trustedRoot: TrustedRoot::fromJson($trustedRootJson),
             identityPolicy: $identityPolicy,
+            subjectPolicy: $subjectPolicy,
         );
     }
 
@@ -83,6 +85,7 @@ final class SigstoreVerifier
         Bundle $bundle,
         TrustedRoot $trustedRoot,
         IdentityPolicy $identityPolicy,
+        ?SubjectPolicy $subjectPolicy = null,
     ): Envelope {
         $this->requireCertificateBundle($bundle);
         $envelope = $this->attestationEnvelope($bundle);
@@ -93,6 +96,7 @@ final class SigstoreVerifier
         $this->verifyDsseSignature($envelope, $leaf->signatureKey());
         $this->verifyDsseTransparencyLog($bundle, $trustedRoot, $envelope, $this->dsseSignature($envelope));
         $identityPolicy->verify($leaf->subjectAlternativeNames(), $leaf->oidcIssuer());
+        $subjectPolicy?->verify(Statement::fromEnvelope($envelope));
 
         return $envelope;
     }
@@ -144,12 +148,14 @@ final class SigstoreVerifier
         string $publicKeyPem,
         string $trustedRootJson,
         ?string $expectedHint = null,
+        ?SubjectPolicy $subjectPolicy = null,
     ): Envelope {
         return $this->verifyWithPublicKey(
             Bundle::fromJson($bundleJson),
             $publicKeyPem,
             TrustedRoot::fromJson($trustedRootJson),
             $expectedHint,
+            $subjectPolicy,
         );
     }
 
@@ -164,6 +170,7 @@ final class SigstoreVerifier
         string $publicKeyPem,
         TrustedRoot $trustedRoot,
         ?string $expectedHint = null,
+        ?SubjectPolicy $subjectPolicy = null,
     ): Envelope {
         $this->requirePublicKeyBundle($bundle, $expectedHint);
         $envelope = $this->attestationEnvelope($bundle);
@@ -171,6 +178,7 @@ final class SigstoreVerifier
         $this->signingTime($bundle, $trustedRoot, $this->dsseSignature($envelope));
         $this->verifyDsseSignature($envelope, SignatureKey::fromPem($publicKeyPem));
         $this->verifyDsseTransparencyLog($bundle, $trustedRoot, $envelope, $this->dsseSignature($envelope));
+        $subjectPolicy?->verify(Statement::fromEnvelope($envelope));
 
         return $envelope;
     }
