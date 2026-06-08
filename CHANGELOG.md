@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0 — 2026-06-08
+
+- **Identity policy ergonomics.** `IdentityPolicy` can now match the signer's SAN
+  by pattern via `IdentityPolicy::sanRegex()`, and ships provider factories
+  `IdentityPolicy::githubActions()` and `IdentityPolicy::gitlabCi()` that build the
+  issuer and SAN for those CI providers (leave the variable parts null to match any
+  workflow/ref). The exact-match constructor is unchanged.
+- **Subject binding.** A new `SubjectPolicy`, accepted as an optional `subjectPolicy`
+  argument on `verify()` / `verifyWithPublicKey()` (and their `...FromJson()`
+  shorthands), requires the attestation's subject to record an expected artifact
+  digest — so a single fail-closed call proves both who signed and what was attested.
+
 ## 1.1.0 — 2026-06-08
 
 - **DSSE attestations recorded as a Rekor v2 hashedrekord** — a DSSE in-toto

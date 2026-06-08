@@ -9,6 +9,7 @@ use K2gl\Sigstore\CertificateAuthority;
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
 use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\IdentityPolicy;
+use K2gl\Sigstore\SubjectPolicy;
 use K2gl\Sigstore\Internal\Asn1;
 use K2gl\Sigstore\Internal\Certificate;
 use K2gl\Sigstore\Internal\CertificateChainVerifier;
@@ -43,6 +44,7 @@ use function K2gl\PHPUnitFluentAssertions\fact;
 #[CoversClass(CertificateAuthority::class)]
 #[CoversClass(TransparencyLogInstance::class)]
 #[CoversClass(IdentityPolicy::class)]
+#[CoversClass(SubjectPolicy::class)]
 #[CoversClass(Certificate::class)]
 #[CoversClass(CertificateChainVerifier::class)]
 #[CoversClass(OpensslVerifier::class)]
@@ -94,6 +96,32 @@ final class SigstoreVerifierTest extends TestCase
         $statement = json_decode($envelope->payload, true);
         fact(is_array($statement))->true();
         fact($statement['predicateType'])->is('https://slsa.dev/provenance/v0.2');
+    }
+
+    public function testVerifiesWithMatchingSubjectPolicy(): void
+    {
+        $envelope = (new SigstoreVerifier)->verify(
+            bundle: $this->bundle(),
+            trustedRoot: $this->trustedRoot(),
+            identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
+            subjectPolicy: new SubjectPolicy(
+                'sha512',
+                '76176ffa33808b54602c7c35de5c6e9a4deb96066dba6533f50ac234f4f1f4c6b3527515dc17c06fbe2860030f410eee69ea20079bd3a2c6f3dcf3b329b10751',
+            ),
+        );
+
+        fact($envelope->payloadType)->is('application/vnd.in-toto+json');
+    }
+
+    public function testRejectsSubjectDigestNotInAttestation(): void
+    {
+        $this->expectException(VerificationFailedException::class);
+        (new SigstoreVerifier)->verify(
+            bundle: $this->bundle(),
+            trustedRoot: $this->trustedRoot(),
+            identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
+            subjectPolicy: new SubjectPolicy('sha512', str_repeat('0', 128)),
+        );
     }
 
     public function testVerifiesRekorV2DsseAttestationBundle(): void
