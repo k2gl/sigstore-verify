@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 — 2026-06-08
 
 - **DSSE attestations recorded as a Rekor v2 hashedrekord** — a DSSE in-toto
   attestation whose transparency-log entry is a `hashedrekord` `0.0.2` entry is
