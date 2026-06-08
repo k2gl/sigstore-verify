@@ -6,6 +6,7 @@ namespace K2gl\Sigstore;
 
 use K2gl\Dsse\Envelope;
 use K2gl\Dsse\Exception\DsseException;
+use K2gl\Dsse\Pae;
 use K2gl\InToto\Statement;
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
 use K2gl\Sigstore\Exception\VerificationFailedException;
@@ -90,7 +91,7 @@ final class SigstoreVerifier
         $leaf = $this->verifyCertificate($bundle, $trustedRoot, $signingTime);
 
         $this->verifyDsseSignature($envelope, $leaf->signatureKey());
-        $this->verifyTransparencyLog($bundle, $trustedRoot, hash('sha256', $envelope->payload), $this->dsseSignature($envelope));
+        $this->verifyDsseTransparencyLog($bundle, $trustedRoot, $envelope, $this->dsseSignature($envelope));
         $identityPolicy->verify($leaf->subjectAlternativeNames(), $leaf->oidcIssuer());
 
         return $envelope;
@@ -169,7 +170,7 @@ final class SigstoreVerifier
 
         $this->signingTime($bundle, $trustedRoot, $this->dsseSignature($envelope));
         $this->verifyDsseSignature($envelope, SignatureKey::fromPem($publicKeyPem));
-        $this->verifyTransparencyLog($bundle, $trustedRoot, hash('sha256', $envelope->payload), $this->dsseSignature($envelope));
+        $this->verifyDsseTransparencyLog($bundle, $trustedRoot, $envelope, $this->dsseSignature($envelope));
 
         return $envelope;
     }
@@ -519,6 +520,32 @@ final class SigstoreVerifier
         }
 
         return $signature->sig;
+    }
+
+    /**
+     * Bind the bundle's Rekor entries for a DSSE attestation. The entry records
+     * the digest of the DSSE-signed message: a Rekor v2 hashedrekord stores the
+     * PAE digest, while a v1 dsse/intoto entry stores the payload digest.
+     */
+    private function verifyDsseTransparencyLog(
+        Bundle $bundle,
+        TrustedRoot $trustedRoot,
+        Envelope $envelope,
+        string $signature,
+    ): void {
+        $payloadHash = hash('sha256', $envelope->payload);
+        $paeHash = hash('sha256', Pae::encode($envelope->payloadType, $envelope->payload));
+
+        foreach ($bundle->tlogEntries as $entry) {
+            $this->rekorVerifier->verify(
+                entry: $entry,
+                trustedRoot: $trustedRoot,
+                expectedHashHex: $entry->isHashedRekordV2() ? $paeHash : $payloadHash,
+                expectedSignature: $signature,
+                signingCertificateDer: $bundle->leafCertificate,
+                requireInclusionProof: $bundle->requiresInclusionProof(),
+            );
+        }
     }
 
     private function verifyTransparencyLog(

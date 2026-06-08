@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace K2gl\Sigstore;
 
 use K2gl\Sigstore\Internal\Json;
+use JsonException;
 
 /**
  * One Rekor transparency-log entry from a bundle's verification material: which
@@ -55,5 +56,24 @@ final class TlogEntry
             inclusionProof: $inclusionProof,
             canonicalizedBody: Json::base64($data, 'canonicalizedBody'),
         );
+    }
+
+    /**
+     * Whether this is a Rekor v2 hashedrekord (0.0.2) entry, detected from the
+     * Merkle-proven canonicalized body — not the unauthenticated kind/version.
+     */
+    public function isHashedRekordV2(): bool
+    {
+        try {
+            $body = json_decode($this->canonicalizedBody, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return false;
+        }
+
+        return is_array($body)
+            && isset($body['spec'])
+            && is_array($body['spec'])
+            && isset($body['spec']['hashedRekordV002'])
+            && is_array($body['spec']['hashedRekordV002']);
     }
 }

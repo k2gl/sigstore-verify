@@ -61,6 +61,7 @@ final class SigstoreVerifierTest extends TestCase
 {
     private const SAN = 'https://github.com/sigstore/sigstore-js/.github/workflows/release.yml@refs/heads/main';
     private const ISSUER = 'https://token.actions.githubusercontent.com';
+    private const BEACON_SAN = 'https://github.com/sigstore-conformance/extremely-dangerous-public-oidc-beacon/.github/workflows/extremely-dangerous-oidc-beacon.yml@refs/heads/main';
 
     private function bundle(): Bundle
     {
@@ -93,6 +94,38 @@ final class SigstoreVerifierTest extends TestCase
         $statement = json_decode($envelope->payload, true);
         fact(is_array($statement))->true();
         fact($statement['predicateType'])->is('https://slsa.dev/provenance/v0.2');
+    }
+
+    public function testVerifiesRekorV2DsseAttestationBundle(): void
+    {
+        // A DSSE in-toto attestation whose Rekor v2 entry is a hashedrekord
+        // (0.0.2): the log records the digest of the DSSE PAE, not the payload
+        // digest a v1 dsse/intoto entry stores, and binds it to the envelope.
+        // The entry carries no integrated time, so an RFC 3161 TSA stands in.
+        $envelope = (new SigstoreVerifier)->verify(
+            bundle: Bundle::fromJson(self::fixture('conformance-rekor2-dsse.json')),
+            trustedRoot: TrustedRoot::fromJson(self::fixture('trusted-root-rekor2-dsse.json')),
+            identityPolicy: new IdentityPolicy(self::BEACON_SAN, self::ISSUER),
+        );
+
+        fact($envelope->payloadType)->is('application/vnd.in-toto+json');
+    }
+
+    public function testRejectsTamperedRekorV2DsseEnvelope(): void
+    {
+        $raw = json_decode(self::fixture('conformance-rekor2-dsse.json'), true);
+        fact($raw)->isArray();
+        $raw['dsseEnvelope']['payload'] = base64_encode(
+            '{"_type":"https://in-toto.io/Statement/v1","subject":[{"name":"x",'
+            . '"digest":{"sha256":"00"}}],"predicateType":"https://slsa.dev/provenance/v1","predicate":{}}'
+        );
+
+        $this->expectException(VerificationFailedException::class);
+        (new SigstoreVerifier)->verify(
+            bundle: Bundle::fromArray($raw),
+            trustedRoot: TrustedRoot::fromJson(self::fixture('trusted-root-rekor2-dsse.json')),
+            identityPolicy: new IdentityPolicy(self::BEACON_SAN, self::ISSUER),
+        );
     }
 
     public function testRejectsWrongSan(): void
