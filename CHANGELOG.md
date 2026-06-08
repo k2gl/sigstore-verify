@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 — 2026-06-08
+
+- **DSSE attestations recorded as a Rekor v2 hashedrekord** — a DSSE in-toto
+  attestation whose transparency-log entry is a `hashedrekord` `0.0.2` entry is
+  now verified. Such an entry binds the digest of the DSSE pre-authentication
+  encoding (PAE), rather than the payload digest a v1 `dsse`/`intoto` entry
+  records. This keeps the verifier passing Sigstore's conformance suite in full,
+  now at v0.0.29.
+
 ## 1.0.0 — 2026-06-03
 
 First stable release. The verifier **passes Sigstore's official sigstore-conformance suite
