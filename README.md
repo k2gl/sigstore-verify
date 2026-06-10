@@ -60,6 +60,24 @@ Requires PHP 8.1+, `ext-openssl`, and [`phpseclib/phpseclib`](https://phpseclib.
 checkpoint notes. Pulls in [`k2gl/in-toto-attestation`](https://github.com/k2gl/in-toto-attestation)
 and [`k2gl/dsse`](https://github.com/k2gl/dsse).
 
+## Command line
+
+The package ships a dependency-free binary for pipelines and one-off checks. Given an
+artifact and its attestation bundle (plain JSON or the JSON Lines file written by
+`gh attestation download`), it verifies the signature, the transparency-log proof, the
+signer identity and the artifact digest in one call:
+
+```bash
+vendor/bin/sigstore-verify dist.tar.gz dist.tar.gz.sigstore.jsonl \
+  --repository acme/app --workflow attest.yml --ref refs/tags/1.2.3
+```
+
+Exit code 0 means verified; any failure prints the fail-closed reason and exits 1.
+`--trusted-root path/to/trusted_root.json` makes the run fully offline; without it the
+public-good root is fetched via TUF. For non-GitHub signers pass the exact certificate
+identity instead: `--san <value> --issuer <issuer>`. With a JSON Lines file the command
+succeeds when any bundle verifies the artifact.
+
 ## The trusted root
 
 Verification runs against a Sigstore `trusted_root.json`. You can supply it three ways.
