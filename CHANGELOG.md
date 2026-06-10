@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.0 — 2026-06-10
+
+- **`vendor/bin/sigstore-verify` CLI.** A dependency-free binary that verifies an
+  artifact against its Sigstore bundle in one call: signature, transparency-log
+  proof, signer identity and artifact digest. Accepts plain JSON bundles and the
+  JSON Lines files written by `gh attestation download` (succeeds when any bundle
+  verifies the artifact), handles both DSSE attestations and message signatures,
+  takes the signer identity as `--repository`/`--workflow`/`--ref` (GitHub Actions)
+  or exact `--san`/`--issuer`, and runs fully offline with `--trusted-root`.
+  Exit code 0 only when every applicable check holds.
+- Release tarballs are published as GitHub release assets together with their
+  Sigstore attestation bundle, and every release is re-verified in CI after
+  publishing.
+
 ## 1.2.0 — 2026-06-08
 
 - **Identity policy ergonomics.** `IdentityPolicy` can now match the signer's SAN

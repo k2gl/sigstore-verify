@@ -48,6 +48,9 @@
       "K2gl\\Sigstore\\": "src/"
     }
   },
+  "bin": [
+    "bin/sigstore-verify"
+  ],
   "autoload-dev": {
     "psr-4": {
       "K2gl\\Sigstore\\Tests\\": "tests/"
