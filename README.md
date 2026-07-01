@@ -7,13 +7,11 @@
 [![PHPStan Level](https://img.shields.io/badge/PHPStan-level%209-2a5ea7?logo=php&logoColor=white)](https://phpstan.org)
 [![License](https://img.shields.io/packagist/l/k2gl/sigstore-verify?color=yellowgreen)](https://packagist.org/packages/k2gl/sigstore-verify)
 
-Offline, **fail-closed** PHP verifier for [Sigstore](https://www.sigstore.dev/) bundles.
-Given a `.sigstore.json` bundle, a trusted root, and the identity you expect, it verifies
-the whole chain of evidence and returns the authenticated content — or throws. It is
-validated against Sigstore's official
-[conformance suite](https://github.com/sigstore/sigstore-conformance), which it **passes in
-full** — every verification case, across Rekor v1 and v2 entries — so its behaviour matches
-the reference clients.
+Offline, fail-closed Sigstore bundle verifier for PHP. Give it a `.sigstore.json` bundle, a
+trust root, and the identity you expect; it verifies the evidence and returns the
+authenticated content, or throws. It passes Sigstore's official
+[conformance suite](https://github.com/sigstore/sigstore-conformance) in full, across Rekor
+v1 and v2, so its behaviour matches the reference clients.
 
 It handles both bundle shapes: **DSSE attestations** (`cosign attest`, npm provenance,
 SLSA provenance) and **message signatures** (`cosign sign-blob` artifact signatures), with

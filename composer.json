@@ -1,6 +1,6 @@
 {
   "name": "k2gl/sigstore-verify",
-  "description": "Offline, fail-closed PHP verifier for Sigstore bundles: Fulcio certificate chain, DSSE or message signature, Rekor v1/v2 transparency-log proof, RFC 3161 timestamp, certificate transparency and identity policy. Passes the official sigstore-conformance suite.",
+  "description": "Offline Sigstore bundle verifier for PHP (Fulcio, Rekor, identity policy).",
   "homepage": "https://github.com/k2gl/sigstore-verify",
   "type": "library",
   "license": "MIT",
