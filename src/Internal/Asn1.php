@@ -30,6 +30,7 @@ final class Asn1
     public const TAG_BOOLEAN = 0x01;
     public const TAG_OID = 0x06;
     public const TAG_OCTET_STRING = 0x04;
+    public const TAG_UTF8_STRING = 0x0c;
     public const TAG_SEQUENCE = 0x10;
 
     /**

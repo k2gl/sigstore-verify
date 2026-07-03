@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.0 — 2026-07-03
+
+- **Leaf certificate hardening**, matching what the Sigstore client spec and the
+  reference clients (sigstore-go, sigstore-python) check on the signing certificate:
+  - The Fulcio OIDC issuer is now read from the **v2 extension** (OID
+    `1.3.6.1.4.1.57264.1.8`, a DER-encoded UTF8String) that the client spec points at,
+    falling back to the deprecated v1 extension older certificates carry. Identity-policy
+    verification keeps working once Fulcio stops emitting the v1 string.
+  - The leaf must carry the **code-signing extended key usage**; a certificate issued for
+    another purpose is now rejected instead of accepted. Real Fulcio certificates always
+    set this, so bundles that verified before continue to verify.
+- Still passes the official sigstore-conformance suite in full on the verification side.
+
 ## 1.3.0 — 2026-06-10
 
 - **`vendor/bin/sigstore-verify` CLI.** A dependency-free binary that verifies an

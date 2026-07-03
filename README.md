@@ -25,8 +25,9 @@ PHP, with no network calls during verification.
 Every one of these must pass or verification throws:
 
 1. **Certificate chain** *(keyless bundles)* — the Fulcio leaf certificate chains to a
-   trusted CA from the supplied trusted root, and every certificate in the path is valid at
-   the signing time. For a public-key bundle there is no certificate; trust rests on the key
+   trusted CA from the supplied trusted root, every certificate in the path is valid at
+   the signing time, and the leaf is issued for code signing (code-signing extended key
+   usage). For a public-key bundle there is no certificate; trust rests on the key
    you supply, and the optional key hint must match if you pass one.
 2. **Signature** — the DSSE envelope signature, or the artifact's message signature,
    verifies under the signing key (the leaf certificate's key, or the public key you supply).

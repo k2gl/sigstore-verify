@@ -25,6 +25,9 @@ final class Certificate
     /** Fulcio "Issuer" extension (v1), holding the OIDC issuer as a plain string. */
     private const OID_FULCIO_ISSUER_V1 = '1.3.6.1.4.1.57264.1.1';
 
+    /** Fulcio "Issuer" extension (v2), holding the OIDC issuer as a DER UTF8String. */
+    private const OID_FULCIO_ISSUER_V2 = '1.3.6.1.4.1.57264.1.8';
+
     /** RFC 6962 embedded Signed Certificate Timestamp list extension. */
     private const OID_SCT_LIST = '1.3.6.1.4.1.11129.2.4.2';
 
@@ -77,6 +80,18 @@ final class Certificate
         return $this->x509->validateDate($moment) === true;
     }
 
+    /**
+     * True if the certificate's Extended Key Usage includes code signing
+     * (id-kp-codeSigning). Fulcio issues code-signing certificates, and the
+     * reference clients reject a leaf that lacks this usage.
+     */
+    public function hasCodeSigningExtendedKeyUsage(): bool
+    {
+        $eku = $this->x509->getExtension('id-ce-extKeyUsage');
+
+        return is_array($eku) && in_array('id-kp-codeSigning', $eku, true);
+    }
+
     /** True if this certificate's signature verifies under the issuer's key. */
     public function isSignedBy(self $issuer): bool
     {
@@ -127,12 +142,46 @@ final class Certificate
         return $names;
     }
 
-    /** The OIDC issuer from the Fulcio v1 extension, or null if absent. */
+    /**
+     * The Fulcio OIDC issuer, or null if absent. Prefers the v2 extension
+     * (OID …57264.1.8, a DER-encoded UTF8String — the one the Sigstore client
+     * spec says to check "at a minimum"); falls back to the deprecated v1
+     * extension (OID …57264.1.1, a bare string) that older certificates carry.
+     */
     public function oidcIssuer(): ?string
+    {
+        return $this->fulcioIssuerV2() ?? $this->fulcioIssuerV1();
+    }
+
+    private function fulcioIssuerV1(): ?string
     {
         $value = $this->x509->getExtension(self::OID_FULCIO_ISSUER_V1);
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    private function fulcioIssuerV2(): ?string
+    {
+        $extension = $this->findExtension(self::OID_FULCIO_ISSUER_V2);
+
+        if ($extension === null) {
+            return null;
+        }
+        $children = Asn1::children($this->der, $extension);
+        $extnValue = $children[count($children) - 1];
+
+        if ($extnValue['tag'] !== Asn1::TAG_OCTET_STRING || $extnValue['class'] !== Asn1::CLASS_UNIVERSAL) {
+            throw new VerificationFailedException('Fulcio issuer (v2) extension value is not an OCTET STRING.');
+        }
+        $wrapped = substr($this->der, $extnValue['contentStart'], $extnValue['contentLen']);
+        $inner = Asn1::read($wrapped, 0);
+
+        if ($inner['tag'] !== Asn1::TAG_UTF8_STRING || $inner['class'] !== Asn1::CLASS_UNIVERSAL) {
+            throw new VerificationFailedException('Fulcio issuer (v2) extension does not wrap a UTF8String.');
+        }
+        $value = substr($wrapped, $inner['contentStart'], $inner['contentLen']);
+
+        return $value !== '' ? $value : null;
     }
 
     /**

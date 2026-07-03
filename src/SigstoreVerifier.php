@@ -472,6 +472,14 @@ final class SigstoreVerifier
             signingTime: $signingTime,
         );
 
+        // The leaf must be issued for code signing. Fulcio always sets this
+        // usage; the reference clients reject a leaf that lacks it.
+        if (! $leaf->hasCodeSigningExtendedKeyUsage()) {
+            throw new VerificationFailedException(
+                'Signing certificate is not valid for code signing (missing codeSigning extended key usage).'
+            );
+        }
+
         // Certificate transparency: when the trusted root provides CT logs, the
         // leaf's embedded SCT must prove Fulcio logged the certificate's issuance.
         if ($trustedRoot->ctLogs !== []) {
