@@ -121,29 +121,28 @@ final class ConformanceClient
 
     /**
      * Resolve the Fulcio, Rekor (v2) and timestamp URLs. Prefers the suite's
-     * signing config; otherwise uses the public staging endpoints.
+     * signing config; otherwise uses the built-in public-good endpoints for the
+     * selected environment (production by default, staging under --staging).
      *
      * @return array{0: string, 1: string, 2: string}
      */
     private function signingEndpoints(?string $signingConfigPath, bool $staging): array
     {
+        [$fulcio, $rekor, $tsa] = $staging
+            ? ['https://fulcio.sigstage.dev', 'https://log2025-1.rekor.sigstage.dev', 'https://timestamp.sigstage.dev/api/v1/timestamp']
+            : ['https://fulcio.sigstore.dev', 'https://log2025-1.rekor.sigstore.dev', 'https://timestamp.sigstore.dev/api/v1/timestamp'];
+
         if ($signingConfigPath !== null) {
             $config = json_decode($this->readFile($signingConfigPath), true);
 
             if (is_array($config)) {
-                return [
-                    $this->firstServiceUrl($config['caUrls'] ?? null) ?? $this->stagingFulcio(),
-                    $this->firstServiceUrl($config['rekorTlogUrls'] ?? null, majorApiVersion: 2) ?? $this->stagingRekor(),
-                    $this->firstServiceUrl($config['tsaUrls'] ?? null) ?? $this->stagingTsa(),
-                ];
+                $fulcio = $this->firstServiceUrl($config['caUrls'] ?? null) ?? $fulcio;
+                $rekor = $this->firstServiceUrl($config['rekorTlogUrls'] ?? null, majorApiVersion: 2) ?? $rekor;
+                $tsa = $this->firstServiceUrl($config['tsaUrls'] ?? null) ?? $tsa;
             }
         }
 
-        if (! $staging) {
-            throw new UnsupportedBundleException('Signing needs --signing-config or --staging.');
-        }
-
-        return [$this->stagingFulcio(), $this->stagingRekor(), $this->stagingTsa()];
+        return [$fulcio, $rekor, $tsa];
     }
 
     /**
@@ -162,8 +161,9 @@ final class ConformanceClient
             if (! is_array($service) || ! isset($service['url']) || ! is_string($service['url'])) {
                 continue;
             }
+            $version = $service['majorApiVersion'] ?? 0;
 
-            if ($majorApiVersion !== null && (int) ($service['majorApiVersion'] ?? 0) !== $majorApiVersion) {
+            if ($majorApiVersion !== null && (is_int($version) ? $version : 0) !== $majorApiVersion) {
                 continue;
             }
 
@@ -171,21 +171,6 @@ final class ConformanceClient
         }
 
         return null;
-    }
-
-    private function stagingFulcio(): string
-    {
-        return 'https://fulcio.sigstage.dev';
-    }
-
-    private function stagingRekor(): string
-    {
-        return 'https://rekor.sigstage.dev';
-    }
-
-    private function stagingTsa(): string
-    {
-        return 'https://timestamp.sigstage.dev/api/v1/timestamp';
     }
 
     /** @param list<string> $args */
