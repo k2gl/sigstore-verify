@@ -38,7 +38,10 @@
     "phpunit/phpunit": "^10|^11|^12",
     "phpstan/phpstan": "^2.1",
     "laravel/pint": "~1.20.0",
-    "k2gl/phpunit-fluent-assertions": "^12"
+    "k2gl/phpunit-fluent-assertions": "^12",
+    "k2gl/sigstore-sign": "^1.1",
+    "symfony/http-client": "^6.4|^7.0",
+    "nyholm/psr7": "^1.8"
   },
   "suggest": {
     "ext-sodium": "Ed25519 verification — DSSE Ed25519 keys and Rekor v2 checkpoint notes"

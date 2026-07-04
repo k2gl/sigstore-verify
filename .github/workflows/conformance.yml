@@ -6,6 +6,8 @@ jobs:
   conformance:
     runs-on: ubuntu-latest
     name: sigstore-conformance
+    permissions:
+      id-token: write # the suite needs an OIDC token for the signing tests
 
     steps:
       - name: Checkout
@@ -25,12 +27,11 @@ jobs:
       - name: Make the conformance client executable
         run: chmod +x bin/conformance
 
-      - name: Run sigstore-conformance (verification only)
+      - name: Run sigstore-conformance (sign + verify)
         uses: sigstore/sigstore-conformance@21533cde107c734ebc153c3e3a24d75fc9811a36 # v0.0.29
         with:
           entrypoint: ${{ github.workspace }}/bin/conformance
-          skip-signing: true
           environment: production
           skip-cpython-release-tests: true
-          # The verifier passes the suite's verification cases in full, so there are no
-          # expected failures: any failing case is a real regression and fails CI.
+          # Verification cases pass in full; signing cases run keyless against
+          # Sigstore staging (Fulcio, Rekor v2, TSA) via bin/conformance sign-bundle.
