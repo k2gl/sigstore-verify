@@ -6,6 +6,7 @@ declare(strict_types=1);
 namespace K2gl\Sigstore\Conformance;
 
 use K2gl\Dsse\Envelope;
+use K2gl\RekorClient\RekorClient;
 use K2gl\Sigstore\Bundle;
 use K2gl\Sigstore\Exception\SigstoreException;
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
@@ -13,16 +14,21 @@ use K2gl\Sigstore\Exception\VerificationFailedException;
 use K2gl\Sigstore\IdentityPolicy;
 use K2gl\Sigstore\SigstoreVerifier;
 use K2gl\Sigstore\TrustedRoot;
+use K2gl\SigstoreSign\Exception\SigstoreSignException;
+use K2gl\SigstoreSign\FulcioClient;
+use K2gl\SigstoreSign\FulcioSigningKey;
+use K2gl\SigstoreSign\SigstoreSigner;
+use K2gl\SigstoreSign\TsaClient;
+use Symfony\Component\HttpClient\Psr18Client;
 
 /**
  * Client-under-test entrypoint for the official sigstore-conformance suite.
  *
- * It implements the `verify-bundle` subcommand of the conformance CLI protocol
- * (both the certificate and public-key forms) on top of {@see SigstoreVerifier}.
- * The suite runs it as `${entrypoint} verify-bundle …` and reads the process
- * exit code: 0 means the bundle verified, any non-zero means it did not. Signing
- * subcommands are out of scope for a verify-only library and are run only when
- * the suite is invoked without `--skip-signing`.
+ * It implements the `verify-bundle` and `sign-bundle` subcommands of the
+ * conformance CLI protocol on top of {@see SigstoreVerifier} and, for signing,
+ * the k2gl/sigstore-sign family (Fulcio + Rekor v2 + a timestamp authority). The
+ * suite runs it as `${entrypoint} <subcommand> …` and reads the process exit
+ * code: 0 on success, non-zero on failure.
  *
  * This file ships only for conformance testing; it is `export-ignore`d from the
  * published package.
@@ -37,13 +43,149 @@ final class ConformanceClient
         try {
             return match ($command) {
                 'verify-bundle' => $this->verifyBundle(array_slice($args, 1)),
-                'sign', 'sign-bundle' => $this->unsupportedSigning(),
+                'sign-bundle' => $this->signBundle(array_slice($args, 1)),
+                'sign' => $this->fail('Only the sign-bundle flow is implemented.'),
                 null => $this->fail('Missing subcommand.'),
                 default => $this->fail(sprintf('Unsupported subcommand "%s".', $command)),
             };
-        } catch (SigstoreException $e) {
+        } catch (SigstoreException | SigstoreSignException $e) {
             return $this->fail($e->getMessage());
         }
+    }
+
+    /**
+     * Sign an artifact (or an in-toto statement) keyless and write the bundle.
+     * The suite passes the OIDC token, so credentials are not read from the
+     * environment; the CA/Rekor/TSA endpoints come from the signing config it
+     * provides, falling back to the public staging URLs under --staging.
+     *
+     * @param list<string> $args
+     */
+    private function signBundle(array $args): int
+    {
+        $bundleOutput = null;
+        $identityToken = null;
+        $signingConfigPath = null;
+        $staging = false;
+        $inToto = false;
+        $artifact = null;
+
+        for ($i = 0; $i < count($args); $i++) {
+            $flag = $args[$i];
+
+            switch ($flag) {
+                case '--staging':
+                    $staging = true;
+                    break;
+                case '--in-toto':
+                    $inToto = true;
+                    break;
+                case '--identity-token':
+                    $identityToken = $this->value($args, ++$i, $flag);
+                    break;
+                case '--bundle':
+                    $bundleOutput = $this->value($args, ++$i, $flag);
+                    break;
+                case '--signing-config':
+                    $signingConfigPath = $this->value($args, ++$i, $flag);
+                    break;
+                case '--trusted-root':
+                    ++$i; // accepted but not needed to sign
+                    break;
+                default:
+                    $artifact = $flag;
+            }
+        }
+
+        if ($identityToken === null || $bundleOutput === null || $artifact === null) {
+            return $this->fail('sign-bundle requires --identity-token, --bundle and an artifact path.');
+        }
+        [$fulcioUrl, $rekorUrl, $tsaUrl] = $this->signingEndpoints($signingConfigPath, $staging);
+
+        $http = new Psr18Client;
+        $key = FulcioSigningKey::create(new FulcioClient($http, $http, $http, $fulcioUrl), $identityToken);
+        $signer = new SigstoreSigner(
+            new RekorClient($http, $http, $http, $rekorUrl),
+            new TsaClient($http, $http, $http, $tsaUrl),
+        );
+
+        $content = $this->readFile($artifact);
+        $bundle = $inToto
+            ? $signer->signAttestation($content, 'application/vnd.in-toto+json', $key)
+            : $signer->signArtifact($content, $key);
+
+        file_put_contents($bundleOutput, $bundle->toJson());
+
+        return 0;
+    }
+
+    /**
+     * Resolve the Fulcio, Rekor (v2) and timestamp URLs. Prefers the suite's
+     * signing config; otherwise uses the public staging endpoints.
+     *
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function signingEndpoints(?string $signingConfigPath, bool $staging): array
+    {
+        if ($signingConfigPath !== null) {
+            $config = json_decode($this->readFile($signingConfigPath), true);
+
+            if (is_array($config)) {
+                return [
+                    $this->firstServiceUrl($config['caUrls'] ?? null) ?? $this->stagingFulcio(),
+                    $this->firstServiceUrl($config['rekorTlogUrls'] ?? null, majorApiVersion: 2) ?? $this->stagingRekor(),
+                    $this->firstServiceUrl($config['tsaUrls'] ?? null) ?? $this->stagingTsa(),
+                ];
+            }
+        }
+
+        if (! $staging) {
+            throw new UnsupportedBundleException('Signing needs --signing-config or --staging.');
+        }
+
+        return [$this->stagingFulcio(), $this->stagingRekor(), $this->stagingTsa()];
+    }
+
+    /**
+     * The URL of the first usable service, optionally restricted to a major API
+     * version (so a Rekor v2 log is picked over a v1 one).
+     *
+     * @param mixed $services
+     */
+    private function firstServiceUrl($services, ?int $majorApiVersion = null): ?string
+    {
+        if (! is_array($services)) {
+            return null;
+        }
+
+        foreach ($services as $service) {
+            if (! is_array($service) || ! isset($service['url']) || ! is_string($service['url'])) {
+                continue;
+            }
+
+            if ($majorApiVersion !== null && (int) ($service['majorApiVersion'] ?? 0) !== $majorApiVersion) {
+                continue;
+            }
+
+            return $service['url'];
+        }
+
+        return null;
+    }
+
+    private function stagingFulcio(): string
+    {
+        return 'https://fulcio.sigstage.dev';
+    }
+
+    private function stagingRekor(): string
+    {
+        return 'https://rekor.sigstage.dev';
+    }
+
+    private function stagingTsa(): string
+    {
+        return 'https://timestamp.sigstage.dev/api/v1/timestamp';
     }
 
     /** @param list<string> $args */
@@ -289,11 +431,6 @@ final class ConformanceClient
         $algorithm = array_key_first($artifactDigests);
 
         return [$algorithm, $artifactDigests[$algorithm]];
-    }
-
-    private function unsupportedSigning(): int
-    {
-        return $this->fail('This client verifies only; run the suite with --skip-signing.');
     }
 
     /** @param list<string> $args */
