@@ -1,6 +1,6 @@
 {
   "name": "k2gl/sigstore-verify",
-  "description": "Offline Sigstore bundle verifier for PHP (Fulcio, Rekor, identity policy).",
+  "description": "Offline Sigstore bundle verifier for PHP (Fulcio, Rekor, identity policy)",
   "homepage": "https://github.com/k2gl/sigstore-verify",
   "type": "library",
   "license": "MIT",
