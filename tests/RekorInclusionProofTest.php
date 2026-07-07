@@ -126,47 +126,50 @@ final class RekorInclusionProofTest extends TestCase
 
     public function testRejectsTamperedRoot(): void
     {
+        // arrange
         $wrongRoot = strrev($this->rootHash);
-        $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier)->verify(
+
+        // act + assert
+        fact(fn () => (new RekorVerifier)->verify(
             entry: $this->entry($wrongRoot),
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
             expectedSignature: self::SIGNATURE,
             signingCertificateDer: null,
             requireInclusionProof: true,
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsPayloadBindingMismatch(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier)->verify(
+        // act + assert
+        fact(fn () => (new RekorVerifier)->verify(
             entry: $this->entry($this->rootHash),
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', 'a-different-payload'),
             expectedSignature: self::SIGNATURE,
             signingCertificateDer: null,
             requireInclusionProof: true,
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsBodySignatureMismatch(): void
     {
         // The entry is logged with a signature other than the one the bundle carries.
-        $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier)->verify(
+        // act + assert
+        fact(fn () => (new RekorVerifier)->verify(
             entry: $this->entry($this->rootHash),
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
             expectedSignature: 'a-different-signature',
             signingCertificateDer: null,
             requireInclusionProof: true,
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsMissingInclusionProofWhenRequired(): void
     {
+        // arrange
         $entry = new TlogEntry(
             logIndex: 0,
             logId: $this->logId,
@@ -177,19 +180,20 @@ final class RekorInclusionProofTest extends TestCase
             canonicalizedBody: $this->canonicalBody,
         );
 
-        $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier)->verify(
+        // act + assert
+        fact(fn () => (new RekorVerifier)->verify(
             entry: $entry,
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
             expectedSignature: self::SIGNATURE,
             signingCertificateDer: null,
             requireInclusionProof: true,
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsCheckpointSignedByAnotherKey(): void
     {
+        // arrange
         // A trusted root whose log key is unrelated to the checkpoint signer.
         $other = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
         fact($other)->instanceOf(OpenSSLAsymmetricKey::class);
@@ -200,19 +204,20 @@ final class RekorInclusionProofTest extends TestCase
             [new TransparencyLogInstance($this->logId, $details['key'])],
         );
 
-        $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier)->verify(
+        // act + assert
+        fact(fn () => (new RekorVerifier)->verify(
             entry: $this->entry($this->rootHash),
             trustedRoot: $foreignRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
             expectedSignature: self::SIGNATURE,
             signingCertificateDer: null,
             requireInclusionProof: true,
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsCheckpointWithWrongKeyHint(): void
     {
+        // arrange
         // The checkpoint note is signed by the right key but carries a key hint
         // that is not the log's: the entry's own log did not produce this note.
         $body = "test-log\n1\n" . base64_encode($this->rootHash);
@@ -237,14 +242,14 @@ final class RekorInclusionProofTest extends TestCase
             canonicalizedBody: $this->canonicalBody,
         );
 
-        $this->expectException(VerificationFailedException::class);
-        (new RekorVerifier)->verify(
+        // act + assert
+        fact(fn () => (new RekorVerifier)->verify(
             entry: $entry,
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
             expectedSignature: self::SIGNATURE,
             signingCertificateDer: null,
             requireInclusionProof: true,
-        );
+        ))->throws(VerificationFailedException::class);
     }
 }

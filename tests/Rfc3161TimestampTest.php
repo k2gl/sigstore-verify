@@ -102,40 +102,42 @@ final class Rfc3161TimestampTest extends TestCase
 
     public function testRejectsTamperedToken(): void
     {
+        // arrange
         $der = $this->timestamp()->signedTimestamp;
         $der[strlen($der) - 1] = $der[strlen($der) - 1] === "\x00" ? "\x01" : "\x00";
 
-        $this->expectException(VerificationFailedException::class);
-        (new Rfc3161Verifier)->verify(
+        // act + assert
+        fact(fn () => (new Rfc3161Verifier)->verify(
             timestamp: new Rfc3161Timestamp($der),
             signature: $this->signature(),
             timestampAuthorities: $this->trustedRoot()->timestampAuthorities,
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsSignatureItDoesNotCover(): void
     {
         // A different signature: the message imprint no longer matches.
-        $this->expectException(VerificationFailedException::class);
-        (new Rfc3161Verifier)->verify(
+        // act + assert
+        fact(fn () => (new Rfc3161Verifier)->verify(
             timestamp: $this->timestamp(),
             signature: $this->signature() . "\x00",
             timestampAuthorities: $this->trustedRoot()->timestampAuthorities,
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsWhenNoTrustedTimestampAuthority(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new Rfc3161Verifier)->verify(
+        // act + assert
+        fact(fn () => (new Rfc3161Verifier)->verify(
             timestamp: $this->timestamp(),
             signature: $this->signature(),
             timestampAuthorities: [],
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsGenTimeOutsideAuthorityValidity(): void
     {
+        // arrange
         // Same TSA certificate chain, but a validity window that ends before the
         // token's genTime: the authority no longer covers the signing time.
         $authority = $this->trustedRoot()->timestampAuthorities[0];
@@ -145,12 +147,12 @@ final class Rfc3161TimestampTest extends TestCase
             validForEnd: new DateTimeImmutable('2025-05-01T00:00:00Z'),
         );
 
-        $this->expectException(VerificationFailedException::class);
-        (new Rfc3161Verifier)->verify(
+        // act + assert
+        fact(fn () => (new Rfc3161Verifier)->verify(
             timestamp: $this->timestamp(),
             signature: $this->signature(),
             timestampAuthorities: [$narrowed],
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testBundleParsesNoTimestampsByDefault(): void
@@ -162,6 +164,7 @@ final class Rfc3161TimestampTest extends TestCase
 
     public function testVerifyArtifactEnforcesPresentTimestamp(): void
     {
+        // arrange
         // Inject a real (but unrelated) timestamp into a bundle that otherwise
         // verifies: the token is from a TSA the trusted root does not anchor, so
         // a present timestamp that cannot be verified fails the whole check.
@@ -174,8 +177,8 @@ final class Rfc3161TimestampTest extends TestCase
         $bundle = Bundle::fromArray($raw);
         fact($bundle->rfc3161Timestamps)->count(1);
 
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verifyArtifact(
+        // act + assert
+        fact(static fn () => (new SigstoreVerifier)->verifyArtifact(
             bundle: $bundle,
             artifact: self::fixture('conformance-artifact.txt'),
             trustedRoot: TrustedRoot::fromJson(self::fixture('trusted-root-public-good.json')),
@@ -184,7 +187,7 @@ final class Rfc3161TimestampTest extends TestCase
                 . '.github/workflows/extremely-dangerous-oidc-beacon.yml@refs/heads/main',
                 'https://token.actions.githubusercontent.com',
             ),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     private function signatureBase64(): string

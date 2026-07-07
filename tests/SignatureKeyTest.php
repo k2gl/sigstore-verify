@@ -74,23 +74,25 @@ final class SignatureKeyTest extends TestCase
 
     public function testRejectsUnsupportedCurve(): void
     {
+        // arrange
         $pem = EC::createKey('secp256k1')->getPublicKey()->toString('PKCS8');
 
-        $this->expectException(UnsupportedBundleException::class);
-        SignatureKey::fromPem($pem);
+        // act + assert
+        fact(static fn () => SignatureKey::fromPem($pem))->throws(UnsupportedBundleException::class);
     }
 
     public function testRejectsUnsupportedAlgorithm(): void
     {
+        // arrange
         $pem = DSA::createKey()->getPublicKey()->toString('PKCS8');
 
-        $this->expectException(UnsupportedBundleException::class);
-        SignatureKey::fromPem($pem);
+        // act + assert
+        fact(static fn () => SignatureKey::fromPem($pem))->throws(UnsupportedBundleException::class);
     }
 
     public function testRejectsMalformedKey(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        SignatureKey::fromPem('not a key');
+        // act + assert
+        fact(static fn () => SignatureKey::fromPem('not a key'))->throws(VerificationFailedException::class);
     }
 }

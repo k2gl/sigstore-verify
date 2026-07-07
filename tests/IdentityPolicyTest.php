@@ -10,6 +10,8 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 
+use function K2gl\PHPUnitFluentAssertions\fact;
+
 #[CoversClass(IdentityPolicy::class)]
 #[CoversClass(VerificationFailedException::class)]
 final class IdentityPolicyTest extends TestCase
@@ -26,26 +28,29 @@ final class IdentityPolicyTest extends TestCase
 
     public function testRejectsWrongIssuer(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new IdentityPolicy(self::SAN, self::ISSUER))->verify([self::SAN], 'https://accounts.google.com');
+        // act + assert
+        fact(static fn () => (new IdentityPolicy(self::SAN, self::ISSUER))->verify([self::SAN], 'https://accounts.google.com'))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testRejectsMissingIssuer(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new IdentityPolicy(self::SAN, self::ISSUER))->verify([self::SAN], null);
+        // act + assert
+        fact(static fn () => (new IdentityPolicy(self::SAN, self::ISSUER))->verify([self::SAN], null))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testRejectsSanNotPresent(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new IdentityPolicy(self::SAN, self::ISSUER))->verify(['https://someone-else'], self::ISSUER);
+        // act + assert
+        fact(static fn () => (new IdentityPolicy(self::SAN, self::ISSUER))->verify(['https://someone-else'], self::ISSUER))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testConstructorRejectsEmptyValues(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        new IdentityPolicy('', self::ISSUER);
+        // act + assert
+        fact(static fn () => new IdentityPolicy('', self::ISSUER))->throws(InvalidArgumentException::class);
     }
 
     public function testSanRegexAcceptsMatching(): void
@@ -57,15 +62,18 @@ final class IdentityPolicyTest extends TestCase
 
     public function testSanRegexRejectsNonMatching(): void
     {
+        // arrange
         $policy = IdentityPolicy::sanRegex('#^https://github\.com/acme/app/.+@refs/tags/.+$#', self::ISSUER);
-        $this->expectException(VerificationFailedException::class);
-        $policy->verify(['https://github.com/acme/app/.github/workflows/release.yml@refs/heads/main'], self::ISSUER);
+
+        // act + assert
+        fact(static fn () => $policy->verify(['https://github.com/acme/app/.github/workflows/release.yml@refs/heads/main'], self::ISSUER))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testSanRegexRejectsInvalidPattern(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        IdentityPolicy::sanRegex('not a valid (regex', self::ISSUER);
+        // act + assert
+        fact(static fn () => IdentityPolicy::sanRegex('not a valid (regex', self::ISSUER))->throws(InvalidArgumentException::class);
     }
 
     public function testGithubActionsExactMatch(): void
@@ -84,9 +92,12 @@ final class IdentityPolicyTest extends TestCase
 
     public function testGithubActionsRejectsAnotherRepository(): void
     {
+        // arrange
         $policy = IdentityPolicy::githubActions('acme/app');
-        $this->expectException(VerificationFailedException::class);
-        $policy->verify(['https://github.com/evil/app/.github/workflows/build.yml@refs/heads/main'], self::ISSUER);
+
+        // act + assert
+        fact(static fn () => $policy->verify(['https://github.com/evil/app/.github/workflows/build.yml@refs/heads/main'], self::ISSUER))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testGitlabCiMatchesAnyRef(): void

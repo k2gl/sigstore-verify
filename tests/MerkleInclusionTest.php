@@ -78,24 +78,26 @@ final class MerkleInclusionTest extends TestCase
 
     public function testRejectsIndexOutOfRange(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        MerkleInclusion::computeRoot(
+        // act + assert
+        fact(static fn () => MerkleInclusion::computeRoot(
             leafIndex: 5,
             treeSize: 5,
             leafHash: str_repeat("\x00", 32),
             proof: [],
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsWrongProofLength(): void
     {
+        // arrange
         $p = $this->realProof();
-        $this->expectException(VerificationFailedException::class);
-        MerkleInclusion::computeRoot(
+
+        // act + assert
+        fact(static fn () => MerkleInclusion::computeRoot(
             leafIndex: $p['index'],
             treeSize: $p['size'],
             leafHash: $p['leafHash'],
             proof: array_slice($p['proof'], 1),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 }

@@ -51,6 +51,7 @@ final class SctVerifierTest extends TestCase
 
     public function testRejectsUnknownCtLog(): void
     {
+        // arrange
         // A CT log set whose ids do not match the SCT: the log is unknown.
         $logs = array_map(
             static fn (TransparencyLogInstance $log): TransparencyLogInstance => new TransparencyLogInstance(
@@ -64,12 +65,14 @@ final class SctVerifierTest extends TestCase
 
         $leaf = $this->leaf();
 
-        $this->expectException(VerificationFailedException::class);
-        (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $logs);
+        // act + assert
+        fact(fn () => (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $logs))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testRejectsWrongCtLogKey(): void
     {
+        // arrange
         // Right log id, wrong key: the SCT signature no longer verifies.
         $strangerKey = $this->trustedRoot()->transparencyLogs[0]->publicKeyPem;
         $logs = array_map(
@@ -84,12 +87,14 @@ final class SctVerifierTest extends TestCase
 
         $leaf = $this->leaf();
 
-        $this->expectException(VerificationFailedException::class);
-        (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $logs);
+        // act + assert
+        fact(fn () => (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $logs))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testRejectsSctOutsideLogWindow(): void
     {
+        // arrange
         // The SCT timestamp falls outside every log's operating window.
         $past = new DateTimeImmutable('2000-01-01T00:00:00Z');
         $logs = array_map(
@@ -104,17 +109,20 @@ final class SctVerifierTest extends TestCase
 
         $leaf = $this->leaf();
 
-        $this->expectException(VerificationFailedException::class);
-        (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $logs);
+        // act + assert
+        fact(fn () => (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $logs))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testRejectsCertificateWithoutEmbeddedSct(): void
     {
+        // arrange
         // The intermediate CA certificate carries no embedded SCT.
         $intermediate = $this->issuerFor($this->leaf());
 
-        $this->expectException(VerificationFailedException::class);
-        (new SctVerifier)->verify($intermediate, $intermediate, $this->trustedRoot()->ctLogs);
+        // act + assert
+        fact(fn () => (new SctVerifier)->verify($intermediate, $intermediate, $this->trustedRoot()->ctLogs))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testEncodeLengthUsesDefiniteForm(): void
