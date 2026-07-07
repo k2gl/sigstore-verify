@@ -98,20 +98,22 @@ final class TrustedRootFromTufTest extends TestCase
 
     public function testMissingTargetThrows(): void
     {
-        $this->expectException(TrustRootException::class);
-        TrustedRoot::fromTuf($this->snapshotUpdater($this->snapshotFetcher()), 'no-such-target.json');
+        // act + assert
+        fact(fn () => TrustedRoot::fromTuf($this->snapshotUpdater($this->snapshotFetcher()), 'no-such-target.json'))
+            ->throws(TrustRootException::class);
     }
 
     public function testTamperedTargetThrows(): void
     {
+        // arrange
         $fetcher = $this->snapshotFetcher();
         $fetcher->put(
             self::SIGSTORE_TARGETS_URL . '/' . self::SIGSTORE_TARGET_HASH . '.trusted_root.json',
             '{"tampered": true}',
         );
 
-        $this->expectException(LengthOrHashMismatchException::class);
-        TrustedRoot::fromTuf($this->snapshotUpdater($fetcher));
+        // act + assert
+        fact(fn () => TrustedRoot::fromTuf($this->snapshotUpdater($fetcher)))->throws(LengthOrHashMismatchException::class);
     }
 
     public function testFromTufResolvesSyntheticRepository(): void

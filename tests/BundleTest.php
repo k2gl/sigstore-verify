@@ -81,14 +81,15 @@ final class BundleTest extends TestCase
 
     public function testRejectsNonObjectJson(): void
     {
-        $this->expectException(InvalidBundleException::class);
-        Bundle::fromJson('[]');
+        // act + assert
+        fact(static fn () => Bundle::fromJson('[]'))->throws(InvalidBundleException::class);
     }
 
     public function testRejectsUnknownMediaType(): void
     {
-        $this->expectException(UnsupportedBundleException::class);
-        Bundle::fromArray(['mediaType' => 'application/json', 'dsseEnvelope' => $this->minimalDsseEnvelope()]);
+        // act + assert
+        fact(fn () => Bundle::fromArray(['mediaType' => 'application/json', 'dsseEnvelope' => $this->minimalDsseEnvelope()]))
+            ->throws(UnsupportedBundleException::class);
     }
 
     public function testParsesPublicKeyMaterial(): void
@@ -125,26 +126,26 @@ final class BundleTest extends TestCase
 
     public function testRejectsMissingContent(): void
     {
-        $this->expectException(InvalidBundleException::class);
-        Bundle::fromArray([
+        // act + assert
+        fact(fn () => Bundle::fromArray([
             'mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json',
             'verificationMaterial' => [
                 'certificate' => ['rawBytes' => base64_encode('der')],
                 'tlogEntries' => [$this->minimalTlogEntry()],
             ],
-        ]);
+        ]))->throws(InvalidBundleException::class);
     }
 
     public function testRejectsEmptyTlogEntries(): void
     {
-        $this->expectException(InvalidBundleException::class);
-        Bundle::fromArray([
+        // act + assert
+        fact(fn () => Bundle::fromArray([
             'mediaType' => 'application/vnd.dev.sigstore.bundle.v0.3+json',
             'verificationMaterial' => [
                 'certificate' => ['rawBytes' => base64_encode('der')],
                 'tlogEntries' => [],
             ],
             'dsseEnvelope' => $this->minimalDsseEnvelope(),
-        ]);
+        ]))->throws(InvalidBundleException::class);
     }
 }

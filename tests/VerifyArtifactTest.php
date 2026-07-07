@@ -177,52 +177,53 @@ final class VerifyArtifactTest extends TestCase
 
     public function testRejectsWrongArtifactDigest(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verifyArtifactDigest(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verifyArtifactDigest(
             bundle: $this->bundle(),
             algorithm: 'sha256',
             hexDigest: hash('sha256', $this->artifact() . 'tampered'),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: $this->policy(),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsNonHexArtifactDigest(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verifyArtifactDigest(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verifyArtifactDigest(
             bundle: $this->bundle(),
             algorithm: 'sha256',
             hexDigest: 'not-a-hex-digest',
             trustedRoot: $this->trustedRoot(),
             identityPolicy: $this->policy(),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsWrongArtifact(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verifyArtifact(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verifyArtifact(
             bundle: $this->bundle(),
             artifact: $this->artifact() . 'tampered',
             trustedRoot: $this->trustedRoot(),
             identityPolicy: $this->policy(),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsWrongIdentity(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verifyArtifact(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verifyArtifact(
             bundle: $this->bundle(),
             artifact: $this->artifact(),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy('https://example.com/someone-else', self::ISSUER),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsTamperedSignature(): void
     {
+        // arrange
         $raw = json_decode(self::fixture('conformance-msgsig-v0.3.json'), true);
         fact($raw)->isArray();
 
@@ -231,23 +232,23 @@ final class VerifyArtifactTest extends TestCase
         $signature[8] = $signature[8] === "\x00" ? "\x01" : "\x00";
         $raw['messageSignature']['signature'] = base64_encode($signature);
 
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verifyArtifact(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verifyArtifact(
             bundle: Bundle::fromArray($raw),
             artifact: $this->artifact(),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: $this->policy(),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testVerifyArtifactRejectsDsseBundle(): void
     {
-        $this->expectException(UnsupportedBundleException::class);
-        (new SigstoreVerifier)->verifyArtifact(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verifyArtifact(
             bundle: Bundle::fromJson(self::fixture('bundle-provenance.json')),
             artifact: $this->artifact(),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: $this->policy(),
-        );
+        ))->throws(UnsupportedBundleException::class);
     }
 }

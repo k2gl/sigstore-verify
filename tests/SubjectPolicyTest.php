@@ -13,6 +13,8 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 
+use function K2gl\PHPUnitFluentAssertions\fact;
+
 #[CoversClass(SubjectPolicy::class)]
 #[CoversClass(VerificationFailedException::class)]
 final class SubjectPolicyTest extends TestCase
@@ -44,25 +46,27 @@ final class SubjectPolicyTest extends TestCase
 
     public function testRejectsMissingDigest(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new SubjectPolicy('sha256', str_repeat('ab', 32)))->verify($this->statement(['sha256' => str_repeat('cd', 32)]));
+        // act + assert
+        fact(fn () => (new SubjectPolicy('sha256', str_repeat('ab', 32)))->verify($this->statement(['sha256' => str_repeat('cd', 32)])))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testRejectsDigestUnderAnotherAlgorithm(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new SubjectPolicy('sha512', str_repeat('ab', 64)))->verify($this->statement(['sha256' => str_repeat('ab', 32)]));
+        // act + assert
+        fact(fn () => (new SubjectPolicy('sha512', str_repeat('ab', 64)))->verify($this->statement(['sha256' => str_repeat('ab', 32)])))
+            ->throws(VerificationFailedException::class);
     }
 
     public function testConstructorRejectsUnknownAlgorithm(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        new SubjectPolicy('md5', str_repeat('ab', 16));
+        // act + assert
+        fact(static fn () => new SubjectPolicy('md5', str_repeat('ab', 16)))->throws(InvalidArgumentException::class);
     }
 
     public function testConstructorRejectsNonHexDigest(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        new SubjectPolicy('sha256', 'not-a-hex-digest');
+        // act + assert
+        fact(static fn () => new SubjectPolicy('sha256', 'not-a-hex-digest'))->throws(InvalidArgumentException::class);
     }
 }

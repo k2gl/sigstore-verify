@@ -46,25 +46,27 @@ final class CheckpointTest extends TestCase
 
     public function testRejectsNoteWithoutSeparator(): void
     {
-        $this->expectException(InvalidBundleException::class);
-        new Checkpoint("origin\n1\nrootHashLine\n");
+        // act + assert
+        fact(static fn () => new Checkpoint("origin\n1\nrootHashLine\n"))->throws(InvalidBundleException::class);
     }
 
     public function testRejectsNoteWithShortBody(): void
     {
-        $this->expectException(InvalidBundleException::class);
-        new Checkpoint("origin\n1\n\n— origin AAAAAA==\n");
+        // act + assert
+        fact(static fn () => new Checkpoint("origin\n1\n\n— origin AAAAAA==\n"))->throws(InvalidBundleException::class);
     }
 
     public function testRejectsNoteWithNonIntegerTreeSize(): void
     {
-        $this->expectException(InvalidBundleException::class);
-        new Checkpoint("origin\nnotanumber\n" . base64_encode('root') . "\n\n— origin " . base64_encode('xxxxsig') . "\n");
+        // act + assert
+        fact(static fn () => new Checkpoint(
+            "origin\nnotanumber\n" . base64_encode('root') . "\n\n— origin " . base64_encode('xxxxsig') . "\n",
+        ))->throws(InvalidBundleException::class);
     }
 
     public function testRejectsNoteWithoutSignature(): void
     {
-        $this->expectException(InvalidBundleException::class);
-        new Checkpoint("origin\n1\n" . base64_encode('root') . "\n\n\n");
+        // act + assert
+        fact(static fn () => new Checkpoint("origin\n1\n" . base64_encode('root') . "\n\n\n"))->throws(InvalidBundleException::class);
     }
 }

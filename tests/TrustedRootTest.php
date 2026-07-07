@@ -60,13 +60,13 @@ final class TrustedRootTest extends TestCase
 
     public function testRejectsNonObjectJson(): void
     {
-        $this->expectException(TrustRootException::class);
-        TrustedRoot::fromJson('"a string"');
+        // act + assert
+        fact(static fn () => TrustedRoot::fromJson('"a string"'))->throws(TrustRootException::class);
     }
 
     public function testRejectsRootWithoutTransparencyLogs(): void
     {
-        $this->expectException(TrustRootException::class);
-        TrustedRoot::fromJson('{"certificateAuthorities":[]}');
+        // act + assert
+        fact(static fn () => TrustedRoot::fromJson('{"certificateAuthorities":[]}'))->throws(TrustRootException::class);
     }
 }

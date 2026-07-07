@@ -115,13 +115,13 @@ final class SigstoreVerifierTest extends TestCase
 
     public function testRejectsSubjectDigestNotInAttestation(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verify(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verify(
             bundle: $this->bundle(),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
             subjectPolicy: new SubjectPolicy('sha512', str_repeat('0', 128)),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testVerifiesRekorV2DsseAttestationBundle(): void
@@ -141,6 +141,7 @@ final class SigstoreVerifierTest extends TestCase
 
     public function testRejectsTamperedRekorV2DsseEnvelope(): void
     {
+        // arrange
         $raw = json_decode(self::fixture('conformance-rekor2-dsse.json'), true);
         fact($raw)->isArray();
         $raw['dsseEnvelope']['payload'] = base64_encode(
@@ -148,36 +149,37 @@ final class SigstoreVerifierTest extends TestCase
             . '"digest":{"sha256":"00"}}],"predicateType":"https://slsa.dev/provenance/v1","predicate":{}}'
         );
 
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verify(
+        // act + assert
+        fact(static fn () => (new SigstoreVerifier)->verify(
             bundle: Bundle::fromArray($raw),
             trustedRoot: TrustedRoot::fromJson(self::fixture('trusted-root-rekor2-dsse.json')),
             identityPolicy: new IdentityPolicy(self::BEACON_SAN, self::ISSUER),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsWrongSan(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verify(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verify(
             bundle: $this->bundle(),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy('https://example.com/not-the-signer', self::ISSUER),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsWrongIssuer(): void
     {
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verify(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verify(
             bundle: $this->bundle(),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, 'https://accounts.google.com'),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsTamperedPayload(): void
     {
+        // arrange
         $raw = json_decode($this->fixture('bundle-provenance.json'), true);
         fact($raw)->isArray();
         $raw['dsseEnvelope']['payload'] = base64_encode(
@@ -185,55 +187,57 @@ final class SigstoreVerifierTest extends TestCase
             . '"digest":{"sha256":"00"}}],"predicateType":"https://slsa.dev/provenance/v0.2","predicate":{}}'
         );
 
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verify(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verify(
             bundle: Bundle::fromArray($raw),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsWhenNoTrustedCaChains(): void
     {
+        // arrange
         // A trusted root whose only CA chain (a single self-signed root) did not
         // issue this leaf: the chain cannot be built, so verification fails.
         $root = $this->trustedRoot();
         $onlyOldCa = new TrustedRoot([$root->certificateAuthorities[0]], $root->transparencyLogs);
 
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verify(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verify(
             bundle: $this->bundle(),
             trustedRoot: $onlyOldCa,
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsUnknownTransparencyLog(): void
     {
+        // arrange
         // Replace the Rekor instance with one bearing a different log id: the
         // entry no longer matches any trusted log.
         $root = $this->trustedRoot();
         $stranger = new TransparencyLogInstance(str_repeat("\x00", 32), $root->transparencyLogs[0]->publicKeyPem);
         $rerooted = new TrustedRoot($root->certificateAuthorities, [$stranger]);
 
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verify(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verify(
             bundle: $this->bundle(),
             trustedRoot: $rerooted,
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testVerifyRejectsMessageSignatureBundle(): void
     {
         // verify() is for DSSE attestations; a message-signature bundle must go
         // through verifyArtifact().
-        $this->expectException(UnsupportedBundleException::class);
-        (new SigstoreVerifier)->verify(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verify(
             bundle: Bundle::fromJson($this->fixture('conformance-msgsig-v0.3.json')),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
-        );
+        ))->throws(UnsupportedBundleException::class);
     }
 
     public function testVerifyFromJsonAcceptsTheRealBundle(): void
@@ -249,6 +253,7 @@ final class SigstoreVerifierTest extends TestCase
 
     public function testRejectsTamperedSignedEntryTimestamp(): void
     {
+        // arrange
         $raw = json_decode($this->fixture('bundle-provenance.json'), true);
         fact($raw)->isArray();
 
@@ -258,25 +263,26 @@ final class SigstoreVerifierTest extends TestCase
         $set[10] = $set[10] === "\x00" ? "\x01" : "\x00"; // flip a byte inside the signature
         $entry['inclusionPromise']['signedEntryTimestamp'] = base64_encode($set);
 
-        $this->expectException(VerificationFailedException::class);
-        (new SigstoreVerifier)->verify(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verify(
             bundle: Bundle::fromArray($raw),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
-        );
+        ))->throws(VerificationFailedException::class);
     }
 
     public function testRejectsNonInTotoPayloadTypeAsUnsupported(): void
     {
+        // arrange
         $raw = json_decode($this->fixture('bundle-provenance.json'), true);
         fact($raw)->isArray();
         $raw['dsseEnvelope']['payloadType'] = 'application/vnd.dev.cosign.simplesigning.v1+json';
 
-        $this->expectException(UnsupportedBundleException::class);
-        (new SigstoreVerifier)->verify(
+        // act + assert
+        fact(fn () => (new SigstoreVerifier)->verify(
             bundle: Bundle::fromArray($raw),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: new IdentityPolicy(self::SAN, self::ISSUER),
-        );
+        ))->throws(UnsupportedBundleException::class);
     }
 }
