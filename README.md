@@ -307,9 +307,14 @@ or fetch and refresh it with `TrustedRoot::fromTuf()` / `TrustedRoot::fromSigsto
 
 The verifier is exercised against the official
 [sigstore-conformance](https://github.com/sigstore/sigstore-conformance) suite on every push
-(verification only) and **passes it in full** — every verification case, across Rekor v1 and
-v2 transparency-log entries, keyless and public-key bundles, and artifact-bytes and bare-digest
-inputs. See [Scope](#scope) for what is verified versus rejected as unsupported.
+and **passes it in full**, signing as well as verifying — every verification case, across
+Rekor v1 and v2 transparency-log entries, keyless and public-key bundles, and artifact-bytes
+and bare-digest inputs, plus the signing cases run keyless against Sigstore staging. See
+[Scope](#scope) for what is verified versus rejected as unsupported.
+
+The suite is pinned to an exact commit, so a weekly job checks that the pin is still the
+newest release and that the tag beside it is the one that commit really carries — a claim
+of "passes in full" is only worth what the newest suite says.
 
 ## Exceptions
 
