@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.0
+
+- Checkpoint parsing now goes through [`k2gl/signed-note`](https://github.com/k2gl/signed-note)
+  instead of a second copy of the same reader. A Rekor checkpoint *is* a signed note, and
+  keeping two implementations of one format in one place is how they drift apart. What
+  stays here is what makes a note a checkpoint: the meaning of its first three lines.
+- A note whose signature lines cannot be read in full is now rejected rather than partly
+  ignored. The previous reader skipped a signature line it could not parse — including one
+  missing the leading em-dash — and carried on with whatever was left. Real Rekor
+  checkpoints are unaffected; the public API is unchanged.
+
 ## 1.5.0
 
 - **Runs on phpseclib 4 as well as 3.** The 4.0 line renamed the package namespace and

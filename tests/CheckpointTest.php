@@ -69,4 +69,26 @@ final class CheckpointTest extends TestCase
         // act + assert
         fact(static fn () => new Checkpoint("origin\n1\n" . base64_encode('root') . "\n\n\n"))->throws(InvalidBundleException::class);
     }
+
+    public function testRejectsASignatureLineWithoutTheEmDash(): void
+    {
+        // arrange
+        $envelope = "origin\n1\n" . base64_encode('root') . "\n\norigin " . base64_encode('hintsig') . "\n";
+
+        // act + assert
+        fact(static fn () => new Checkpoint($envelope))->throws(InvalidBundleException::class);
+    }
+
+    public function testRejectsAMalformedSignatureLineEvenBesideAGoodOne(): void
+    {
+        // arrange: a note whose first signature line is well-formed and whose
+        // second is not. Skipping the bad line would mean accepting a note we
+        // could not fully read.
+        $envelope = "origin\n1\n" . base64_encode('root') . "\n"
+            . "\n\u{2014} origin " . base64_encode('hintsig') . "\n"
+            . "\u{2014} origin not-base64!\n";
+
+        // act + assert
+        fact(static fn () => new Checkpoint($envelope))->throws(InvalidBundleException::class);
+    }
 }
