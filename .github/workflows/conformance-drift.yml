@@ -1,0 +1,70 @@
+name: Conformance drift
+
+# The Conformance workflow pins sigstore-conformance to an exact commit, which is
+# right for reproducibility and wrong for staying current — a new release of the
+# suite would go unnoticed and "passes conformance in full" would quietly rot.
+# This checks weekly that the pin is still the newest release, and that the tag
+# written beside the SHA is the tag that SHA really carries, and files an issue
+# when either has drifted.
+
+on:
+  schedule:
+    - cron: '41 7 * * 1' # weekly, Monday 07:41 UTC
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  check-pin:
+    runs-on: ubuntu-latest
+    name: conformance pin
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Compare the pin with the newest suite release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUITE: sigstore/sigstore-conformance
+        run: |
+          set -euo pipefail
+
+          workflow=.github/workflows/conformance.yml
+          pinned_sha=$(grep -oP "$SUITE@\K[0-9a-f]{40}" "$workflow")
+          pinned_tag=$(grep -oP "$SUITE@[0-9a-f]{40} # \K\S+" "$workflow")
+          latest_tag=$(gh release view --repo "$SUITE" --json tagName --jq .tagName)
+          tag_sha=$(gh api "repos/$SUITE/commits/$pinned_tag" --jq .sha)
+
+          echo "pinned $pinned_tag ($pinned_sha), newest release $latest_tag"
+
+          problems=""
+
+          if [ "$pinned_tag" != "$latest_tag" ]; then
+            problems="- The suite's newest release is \`$latest_tag\`; this repository still pins \`$pinned_tag\`."$'\n'
+          fi
+
+          if [ "$tag_sha" != "$pinned_sha" ]; then
+            problems="$problems- The pinned SHA \`$pinned_sha\` is not what \`$pinned_tag\` points at (\`$tag_sha\`), so the comment beside the pin is wrong."$'\n'
+          fi
+
+          if [ -z "$problems" ]; then
+            echo "The pin is current."
+            exit 0
+          fi
+
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search 'in:title "sigstore-conformance pin"' --json number --jq '.[0].number // empty')
+
+          if [ -n "$open" ]; then
+            echo "Already tracked in #$open."
+            exit 0
+          fi
+
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "sigstore-conformance pin has drifted from $latest_tag" \
+            --body "$problems
+          Re-pin in \`.github/workflows/conformance.yml\` and run the suite before claiming it still passes in full: a new release usually means new cases, and the claim is only worth what the newest suite says."
