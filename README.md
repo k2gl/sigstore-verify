@@ -55,7 +55,7 @@ composer require k2gl/sigstore-verify
 ```
 
 Requires PHP 8.1+, `ext-openssl`, and [`phpseclib/phpseclib`](https://phpseclib.com/)
-(certificate parsing); `ext-sodium` is needed for Ed25519 — DSSE Ed25519 keys and Rekor v2
+(certificate parsing) — either the 3.x or the 4.x line, whichever your project already has; `ext-sodium` is needed for Ed25519 — DSSE Ed25519 keys and Rekor v2
 checkpoint notes. Pulls in [`k2gl/in-toto-attestation`](https://github.com/k2gl/in-toto-attestation)
 and [`k2gl/dsse`](https://github.com/k2gl/dsse).
 

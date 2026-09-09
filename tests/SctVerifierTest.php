@@ -148,9 +148,11 @@ final class SctVerifierTest extends TestCase
     /** The CA certificate from the trusted root that signed the leaf. */
     private function issuerFor(Certificate $leaf): Certificate
     {
+        $at = new DateTimeImmutable('2023-04-18T17:50:00Z');
+
         foreach ($this->trustedRoot()->certificateAuthorities as $authority) {
             foreach ($authority->certificates() as $candidate) {
-                if ($leaf->isSignedBy($candidate)) {
+                if ($leaf->isSignedBy($candidate, $at)) {
                     return $candidate;
                 }
             }

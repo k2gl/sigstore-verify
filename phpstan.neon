@@ -3,3 +3,43 @@ parameters:
     paths:
         - src
         - bin/conformance
+    ignoreErrors:
+        # phpseclib 3 and 4 are both supported, and only one of them is installed
+        # when this runs. Whichever it is, the branch for the other major looks
+        # unreachable to static analysis, so these are ignored in both directions.
+        -
+            identifier: function.impossibleType
+            path: src/phpseclib4-compat.php
+            reportUnmatched: false
+        -
+            identifier: function.impossibleType
+            path: src/Internal/Certificate.php
+            reportUnmatched: false
+        -
+            identifier: function.alreadyNarrowedType
+            path: src/Internal/Certificate.php
+            reportUnmatched: false
+        -
+            identifier: method.notFound
+            path: src/Internal/Certificate.php
+            reportUnmatched: false
+        -
+            identifier: staticMethod.notFound
+            path: src/Internal/Certificate.php
+            reportUnmatched: false
+        # phpseclib 4 types these more precisely than 3 does, so the checks that
+        # are load-bearing under 3 look redundant under 4.
+        -
+            identifier: instanceof.alwaysTrue
+            path: src/Internal/Certificate.php
+            reportUnmatched: false
+        -
+            identifier: function.alreadyNarrowedType
+            path: src/Internal/SignatureKey.php
+            reportUnmatched: false
+        # modInverse() is nullable in phpseclib 4 and untyped in 3, so the guard
+        # against a missing inverse reads as redundant on the 3.x side.
+        -
+            identifier: instanceof.alwaysTrue
+            path: src/Internal/EcdsaPrehashed.php
+            reportUnmatched: false
