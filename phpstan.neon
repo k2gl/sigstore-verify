@@ -37,3 +37,9 @@ parameters:
             identifier: function.alreadyNarrowedType
             path: src/Internal/SignatureKey.php
             reportUnmatched: false
+        # modInverse() is nullable in phpseclib 4 and untyped in 3, so the guard
+        # against a missing inverse reads as redundant on the 3.x side.
+        -
+            identifier: instanceof.alwaysTrue
+            path: src/Internal/EcdsaPrehashed.php
+            reportUnmatched: false
