@@ -1,74 +1,77 @@
 {
-  "name": "k2gl/sigstore-verify",
-  "description": "Offline Sigstore bundle verifier for PHP (Fulcio, Rekor, identity policy)",
-  "homepage": "https://github.com/k2gl/sigstore-verify",
-  "type": "library",
-  "license": "MIT",
-  "keywords": [
-    "sigstore",
-    "rekor",
-    "fulcio",
-    "transparency-log",
-    "bundle",
-    "in-toto",
-    "attestation",
-    "slsa",
-    "dsse",
-    "supply-chain"
-  ],
-  "authors": [
-    {
-      "name": "Nick Harin",
-      "email": "l0gic@ya.ru"
+    "name": "k2gl/sigstore-verify",
+    "description": "Offline Sigstore bundle verifier for PHP (Fulcio, Rekor, identity policy)",
+    "homepage": "https://github.com/k2gl/sigstore-verify",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "sigstore",
+        "rekor",
+        "fulcio",
+        "transparency-log",
+        "bundle",
+        "in-toto",
+        "attestation",
+        "slsa",
+        "dsse",
+        "supply-chain"
+    ],
+    "authors": [
+        {
+            "name": "Nick Harin",
+            "email": "l0gic@ya.ru"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/k2gl/sigstore-verify/issues",
+        "source": "https://github.com/k2gl/sigstore-verify"
+    },
+    "require": {
+        "php": ">=8.1",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "k2gl/in-toto-attestation": "^1.0",
+        "k2gl/tuf": "^1.0",
+        "phpseclib/phpseclib": "^3.0 || ^4.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10|^11|^12",
+        "phpstan/phpstan": "^2.1",
+        "laravel/pint": "~1.20.0",
+        "k2gl/phpunit-fluent-assertions": "^12",
+        "k2gl/sigstore-sign": "^1.1",
+        "symfony/http-client": "^6.4|^7.0",
+        "nyholm/psr7": "^1.8"
+    },
+    "suggest": {
+        "ext-sodium": "Ed25519 verification — DSSE Ed25519 keys and Rekor v2 checkpoint notes"
+    },
+    "autoload": {
+        "psr-4": {
+            "K2gl\\Sigstore\\": "src/"
+        },
+        "files": [
+            "src/phpseclib4-compat.php"
+        ]
+    },
+    "bin": [
+        "bin/sigstore-verify"
+    ],
+    "autoload-dev": {
+        "psr-4": {
+            "K2gl\\Sigstore\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "scripts": {
+        "test": "phpunit",
+        "phpstan": "phpstan analyse",
+        "cs": "pint --test",
+        "cs-fix": "pint",
+        "check": [
+            "@test",
+            "@phpstan",
+            "@cs"
+        ]
     }
-  ],
-  "support": {
-    "issues": "https://github.com/k2gl/sigstore-verify/issues",
-    "source": "https://github.com/k2gl/sigstore-verify"
-  },
-  "require": {
-    "php": ">=8.1",
-    "ext-json": "*",
-    "ext-openssl": "*",
-    "k2gl/in-toto-attestation": "^1.0",
-    "k2gl/tuf": "^1.0",
-    "phpseclib/phpseclib": "^3.0"
-  },
-  "require-dev": {
-    "phpunit/phpunit": "^10|^11|^12",
-    "phpstan/phpstan": "^2.1",
-    "laravel/pint": "~1.20.0",
-    "k2gl/phpunit-fluent-assertions": "^12",
-    "k2gl/sigstore-sign": "^1.1",
-    "symfony/http-client": "^6.4|^7.0",
-    "nyholm/psr7": "^1.8"
-  },
-  "suggest": {
-    "ext-sodium": "Ed25519 verification — DSSE Ed25519 keys and Rekor v2 checkpoint notes"
-  },
-  "autoload": {
-    "psr-4": {
-      "K2gl\\Sigstore\\": "src/"
-    }
-  },
-  "bin": [
-    "bin/sigstore-verify"
-  ],
-  "autoload-dev": {
-    "psr-4": {
-      "K2gl\\Sigstore\\Tests\\": "tests/"
-    }
-  },
-  "minimum-stability": "stable",
-  "scripts": {
-    "test": "phpunit",
-    "phpstan": "phpstan analyse",
-    "cs": "pint --test",
-    "cs-fix": "pint",
-    "check": [
-      "@test",
-      "@phpstan",
-      "@cs"
-    ]
-  }
 }

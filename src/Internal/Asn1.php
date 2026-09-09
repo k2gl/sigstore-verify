@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace K2gl\Sigstore\Internal;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use K2gl\Sigstore\Exception\UnsupportedBundleException;
 use K2gl\Sigstore\Exception\VerificationFailedException;
 
@@ -32,6 +34,8 @@ final class Asn1
     public const TAG_OCTET_STRING = 0x04;
     public const TAG_UTF8_STRING = 0x0c;
     public const TAG_SEQUENCE = 0x10;
+    public const TAG_UTC_TIME = 0x17;
+    public const TAG_GENERALIZED_TIME = 0x18;
 
     /**
      * Read one DER TLV header at the given offset (definite length only).
@@ -167,5 +171,46 @@ final class Asn1
         }
 
         return chr((0x80 | strlen($bytes)) & 0xFF) . $bytes;
+    }
+
+    /**
+     * Decode an X.509 Time — the CHOICE of UTCTime and GeneralizedTime a
+     * certificate's validity is written in. DER pins the encoding down to one
+     * form each, always UTC and always with seconds, so anything else is a
+     * malformed certificate rather than a dialect to accommodate. A two-digit
+     * year is read per RFC 5280: 50 and above is 19xx, below is 20xx.
+     *
+     * @param Tlv $node
+     */
+    public static function decodeTime(string $der, array $node): DateTimeImmutable
+    {
+        $value = substr($der, $node['contentStart'], $node['contentLen']);
+
+        if ($node['class'] !== self::CLASS_UNIVERSAL) {
+            throw new VerificationFailedException('Certificate validity is not a universal ASN.1 time.');
+        }
+        $digits = match ($node['tag']) {
+            self::TAG_UTC_TIME => 12,
+            self::TAG_GENERALIZED_TIME => 14,
+            default => throw new VerificationFailedException('Certificate validity is not a UTCTime or GeneralizedTime.'),
+        };
+
+        if (strlen($value) !== $digits + 1 || $value[$digits] !== 'Z' || ! ctype_digit(substr($value, 0, $digits))) {
+            throw new VerificationFailedException('Certificate validity is not a valid DER time.');
+        }
+        $stamp = substr($value, 0, $digits);
+
+        if ($node['tag'] === self::TAG_UTC_TIME) {
+            // PHP's two-digit year pivots at 69; RFC 5280 pivots at 50, so widen it here
+            // rather than let the format string decide.
+            $stamp = ((int) substr($stamp, 0, 2) >= 50 ? '19' : '20') . $stamp;
+        }
+        $parsed = DateTimeImmutable::createFromFormat('!YmdHis', $stamp, new DateTimeZone('UTC'));
+
+        if ($parsed === false) {
+            throw new VerificationFailedException('Certificate validity does not name a real time.');
+        }
+
+        return $parsed;
     }
 }

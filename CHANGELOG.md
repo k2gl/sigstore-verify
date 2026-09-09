@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0
+
+- **Runs on phpseclib 4 as well as 3.** The 4.0 line renamed the package namespace and
+  reworked `File\X509` — `load()` and `addCA()` became static, the CA store and the
+  validation date became process-wide state, `getExtension()` returns a different shape,
+  and `validateDate()` went private. A project already on phpseclib 4 could not install
+  this verifier at all; now either major works.
+- Certificate validity, Extended Key Usage and Subject Alternative Names are read from the
+  certificate's DER instead of through phpseclib, next to the SCT and Fulcio-issuer
+  extensions that were already parsed that way. That is what makes one code path serve both
+  majors, and it leaves phpseclib responsible only for key loading and signature checking.
+- ECDSA verification now fails closed if a modular inverse is missing, rather than raising
+  a `TypeError`. The curves in use have prime order, so this cannot happen in practice —
+  but untrusted input should not be able to turn a rejection into a crash.
+
 ## 1.4.0 — 2026-07-03
 
 - **Leaf certificate hardening**, matching what the Sigstore client spec and the

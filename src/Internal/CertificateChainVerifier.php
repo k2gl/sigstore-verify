@@ -67,13 +67,13 @@ final class CertificateChainVerifier
                 return false;
             }
 
-            if (! $chain[$i]->isSignedBy($chain[$i + 1])) {
+            if (! $chain[$i]->isSignedBy($chain[$i + 1], $signingTime)) {
                 return false;
             }
         }
 
         $anchor = $chain[$last];
 
-        return $anchor->isValidAt($signingTime) && $anchor->isSignedBy($anchor);
+        return $anchor->isValidAt($signingTime) && $anchor->isSignedBy($anchor, $signingTime);
     }
 }

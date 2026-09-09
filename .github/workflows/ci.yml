@@ -9,8 +9,14 @@ jobs:
       fail-fast: false
       matrix:
         php-version: ['8.1', '8.2', '8.3', '8.4', '8.5']
+        phpseclib: ['^3.0']
+        include:
+          # phpseclib 4 renamed the namespace and reworked X509; the library
+          # supports both, so one leg has to actually run on it.
+          - php-version: '8.4'
+            phpseclib: '^4.0'
 
-    name: PHP ${{ matrix.php-version }}
+    name: PHP ${{ matrix.php-version }}${{ matrix.phpseclib == '^4.0' && ' (phpseclib 4)' || '' }}
 
     steps:
       - name: Checkout
@@ -26,6 +32,9 @@ jobs:
 
       - name: Install Composer dependencies
         run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Pin the phpseclib major under test
+        run: composer update phpseclib/phpseclib --with "phpseclib/phpseclib:${{ matrix.phpseclib }}" --no-progress --prefer-dist
 
       - name: PHPUnit
         run: vendor/bin/phpunit

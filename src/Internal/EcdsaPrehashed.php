@@ -92,6 +92,13 @@ final class EcdsaPrehashed implements DigestVerifier
         $z = $excessBits > 0 ? $e->bitwise_rightShift($excessBits) : $e;
 
         $w = $s->modInverse($order);
+
+        // The order of every curve here is prime, so an s in [1, n-1] always has
+        // an inverse. Say so out loud rather than let a missing one become a
+        // TypeError on untrusted input.
+        if (! $w instanceof BigInteger) {
+            return false;
+        }
         [, $u1] = $z->multiply($w)->divide($order);
         [, $u2] = $r->multiply($w)->divide($order);
 
