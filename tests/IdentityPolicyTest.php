@@ -22,8 +22,7 @@ final class IdentityPolicyTest extends TestCase
     public function testAcceptsMatchingIdentity(): void
     {
         $policy = new IdentityPolicy(self::SAN, self::ISSUER);
-        $policy->verify(['https://other', self::SAN], self::ISSUER);
-        $this->addToAssertionCount(1);
+        fact(fn () => $policy->verify(['https://other', self::SAN], self::ISSUER))->doesNotThrow();
     }
 
     public function testRejectsWrongIssuer(): void
@@ -56,8 +55,7 @@ final class IdentityPolicyTest extends TestCase
     public function testSanRegexAcceptsMatching(): void
     {
         $policy = IdentityPolicy::sanRegex('#^https://github\.com/acme/app/.+@refs/tags/.+$#', self::ISSUER);
-        $policy->verify(['https://github.com/acme/app/.github/workflows/release.yml@refs/tags/v1.2.3'], self::ISSUER);
-        $this->addToAssertionCount(1);
+        fact(fn () => $policy->verify(['https://github.com/acme/app/.github/workflows/release.yml@refs/tags/v1.2.3'], self::ISSUER))->doesNotThrow();
     }
 
     public function testSanRegexRejectsNonMatching(): void
@@ -79,15 +77,13 @@ final class IdentityPolicyTest extends TestCase
     public function testGithubActionsExactMatch(): void
     {
         $policy = IdentityPolicy::githubActions('acme/app', 'release.yml', 'refs/heads/main');
-        $policy->verify([self::SAN], self::ISSUER);
-        $this->addToAssertionCount(1);
+        fact(fn () => $policy->verify([self::SAN], self::ISSUER))->doesNotThrow();
     }
 
     public function testGithubActionsMatchesAnyWorkflowAndRef(): void
     {
         $policy = IdentityPolicy::githubActions('acme/app');
-        $policy->verify(['https://github.com/acme/app/.github/workflows/build.yml@refs/tags/v2'], self::ISSUER);
-        $this->addToAssertionCount(1);
+        fact(fn () => $policy->verify(['https://github.com/acme/app/.github/workflows/build.yml@refs/tags/v2'], self::ISSUER))->doesNotThrow();
     }
 
     public function testGithubActionsRejectsAnotherRepository(): void
@@ -103,14 +99,12 @@ final class IdentityPolicyTest extends TestCase
     public function testGitlabCiMatchesAnyRef(): void
     {
         $policy = IdentityPolicy::gitlabCi('my-group/my-project');
-        $policy->verify(['https://gitlab.com/my-group/my-project//.gitlab-ci.yml@refs/heads/main'], 'https://gitlab.com');
-        $this->addToAssertionCount(1);
+        fact(fn () => $policy->verify(['https://gitlab.com/my-group/my-project//.gitlab-ci.yml@refs/heads/main'], 'https://gitlab.com'))->doesNotThrow();
     }
 
     public function testGitlabCiExactMatch(): void
     {
         $policy = IdentityPolicy::gitlabCi('my-group/my-project', '.gitlab-ci.yml', 'refs/heads/main');
-        $policy->verify(['https://gitlab.com/my-group/my-project//.gitlab-ci.yml@refs/heads/main'], 'https://gitlab.com');
-        $this->addToAssertionCount(1);
+        fact(fn () => $policy->verify(['https://gitlab.com/my-group/my-project//.gitlab-ci.yml@refs/heads/main'], 'https://gitlab.com'))->doesNotThrow();
     }
 }

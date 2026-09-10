@@ -71,7 +71,7 @@ final class CliCommandTest extends TestCase
         $exit = $this->runCli('--help');
 
         fact($exit)->is(0);
-        fact(str_contains($this->cliOutput(), 'Usage: sigstore-verify'))->true();
+        fact($this->cliOutput())->containsString('Usage: sigstore-verify');
     }
 
     public function testMissingIdentityIsAUsageError(): void
@@ -82,7 +82,7 @@ final class CliCommandTest extends TestCase
         );
 
         fact($exit)->is(2);
-        fact(str_contains($this->cliErrors(), 'Expected an identity'))->true();
+        fact($this->cliErrors())->containsString('Expected an identity');
     }
 
     public function testUnknownOptionIsAUsageError(): void
@@ -90,7 +90,7 @@ final class CliCommandTest extends TestCase
         $exit = $this->runCli('a', 'b', '--nope', 'x');
 
         fact($exit)->is(2);
-        fact(str_contains($this->cliErrors(), 'Unknown option "--nope"'))->true();
+        fact($this->cliErrors())->containsString('Unknown option "--nope"');
     }
 
     public function testVerifiesMessageSignatureArtifactWithExactIdentity(): void
@@ -106,9 +106,9 @@ final class CliCommandTest extends TestCase
             self::fixture('trusted-root-public-good.json'),
         );
 
-        fact($this->cliErrors())->is('');
+        fact($this->cliErrors())->isEmptyString();
         fact($exit)->is(0);
-        fact(str_contains($this->cliOutput(), 'VERIFIED'))->true();
+        fact($this->cliOutput())->containsString('VERIFIED');
     }
 
     public function testVerifiesWithGithubActionsIdentityFactory(): void
@@ -126,9 +126,9 @@ final class CliCommandTest extends TestCase
             self::fixture('trusted-root-public-good.json'),
         );
 
-        fact($this->cliErrors())->is('');
+        fact($this->cliErrors())->isEmptyString();
         fact($exit)->is(0);
-        fact(str_contains($this->cliOutput(), 'VERIFIED'))->true();
+        fact($this->cliOutput())->containsString('VERIFIED');
     }
 
     public function testRejectsWrongSignerIdentity(): void
@@ -143,8 +143,8 @@ final class CliCommandTest extends TestCase
         );
 
         fact($exit)->is(1);
-        fact(str_contains($this->cliErrors(), 'FAILED: no bundle verifies the artifact'))->true();
-        fact(str_contains($this->cliErrors(), 'identity'))->true();
+        fact($this->cliErrors())->containsString('FAILED: no bundle verifies the artifact');
+        fact($this->cliErrors())->containsString('identity');
     }
 
     public function testRejectsDsseAttestationWhoseSubjectDoesNotMatchTheArtifact(): void
@@ -161,18 +161,18 @@ final class CliCommandTest extends TestCase
         );
 
         fact($exit)->is(1);
-        fact(str_contains($this->cliErrors(), 'FAILED'))->true();
+        fact($this->cliErrors())->containsString('FAILED');
     }
 
     public function testJsonLinesVerifiesWhenAnyBundleMatches(): void
     {
         $provenance = file_get_contents(self::fixture('bundle-provenance.json'));
         $messageSignature = file_get_contents(self::fixture('conformance-msgsig-v0.3.json'));
-        fact(is_string($provenance))->true();
-        fact(is_string($messageSignature))->true();
+        fact($provenance)->isString();
+        fact($messageSignature)->isString();
 
         $jsonl = tempnam(sys_get_temp_dir(), 'bundles');
-        fact(is_string($jsonl))->true();
+        fact($jsonl)->isString();
         assert(is_string($jsonl) && is_string($provenance) && is_string($messageSignature));
         file_put_contents($jsonl, json_encode(json_decode($provenance)) . "\n" . json_encode(json_decode($messageSignature)) . "\n");
 
@@ -192,7 +192,7 @@ final class CliCommandTest extends TestCase
         }
 
         fact($exit)->is(0);
-        fact(str_contains($this->cliOutput(), 'VERIFIED'))->true();
+        fact($this->cliOutput())->containsString('VERIFIED');
     }
 
     public function testMissingArtifactFileIsAnError(): void
@@ -205,6 +205,6 @@ final class CliCommandTest extends TestCase
         );
 
         fact($exit)->is(2);
-        fact(str_contains($this->cliErrors(), 'does not exist'))->true();
+        fact($this->cliErrors())->containsString('does not exist');
     }
 }

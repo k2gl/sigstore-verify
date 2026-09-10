@@ -33,15 +33,13 @@ final class SubjectPolicyTest extends TestCase
     public function testAcceptsMatchingDigest(): void
     {
         $hex = str_repeat('ab', 32);
-        (new SubjectPolicy('sha256', $hex))->verify($this->statement(['sha256' => $hex]));
-        $this->addToAssertionCount(1);
+        fact(fn () => (new SubjectPolicy('sha256', $hex))->verify($this->statement(['sha256' => $hex])))->doesNotThrow();
     }
 
     public function testAcceptsDigestRegardlessOfCase(): void
     {
         $hex = str_repeat('ab', 32);
-        (new SubjectPolicy('sha256', strtoupper($hex)))->verify($this->statement(['sha256' => $hex]));
-        $this->addToAssertionCount(1);
+        fact(fn () => (new SubjectPolicy('sha256', strtoupper($hex)))->verify($this->statement(['sha256' => $hex])))->doesNotThrow();
     }
 
     public function testRejectsMissingDigest(): void
