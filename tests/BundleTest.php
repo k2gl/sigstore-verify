@@ -55,9 +55,9 @@ final class BundleTest extends TestCase
 
         fact($bundle->isDsse())->true();
         fact($bundle->dsseEnvelope?->payloadType)->is('application/vnd.in-toto+json');
-        fact(count($bundle->tlogEntries))->is(1);
+        fact($bundle->tlogEntries)->count(1);
         fact($bundle->tlogEntries[0]->kind)->is('intoto');
-        fact($bundle->leafCertificate === '')->false();
+        fact($bundle->leafCertificate)->isNotEmptyString();
     }
 
     public function testParsesMessageSignatureBundle(): void

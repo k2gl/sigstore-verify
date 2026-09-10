@@ -37,11 +37,11 @@ final class CheckpointTest extends TestCase
 
         fact($checkpoint->treeSize())->is(25901138);
         fact(base64_encode($checkpoint->rootHash()))->is('iGAoHccJIyFemFxmEftti2YC8hvPqixBi5y1EyvfF4c=');
-        fact(count($checkpoint->signatures()))->is(1);
+        fact($checkpoint->signatures())->count(1);
         // The signed body is the note header up to (and including) the newline
         // before the blank separator line.
-        fact(str_ends_with($checkpoint->signedBody(), "\n"))->true();
-        fact(str_contains($checkpoint->signedBody(), "\n\n"))->false();
+        fact($checkpoint->signedBody())->endsWith("\n");
+        fact($checkpoint->signedBody())->notContainsString("\n\n");
     }
 
     public function testRejectsNoteWithoutSeparator(): void

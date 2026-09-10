@@ -33,8 +33,8 @@ final class TrustedRootTest extends TestCase
     public function testParsesPublicGoodRoot(): void
     {
         $root = $this->publicGood();
-        fact(count($root->certificateAuthorities))->is(2);
-        fact(count($root->transparencyLogs))->is(1);
+        fact($root->certificateAuthorities)->count(2);
+        fact($root->transparencyLogs)->count(1);
     }
 
     public function testFindsTransparencyLogByLogId(): void
@@ -42,7 +42,7 @@ final class TrustedRootTest extends TestCase
         $logId = base64_decode('wNI9atQGlz+VWfO6LRygH4QUfY/8W4RFwiT5i5WRgB0=', true);
         fact($logId)->isString();
 
-        fact($this->publicGood()->findTransparencyLog($logId) !== null)->true();
+        fact($this->publicGood()->findTransparencyLog($logId))->notNull();
     }
 
     public function testReturnsNullForUnknownLogId(): void

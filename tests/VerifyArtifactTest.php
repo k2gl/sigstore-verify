@@ -111,52 +111,44 @@ final class VerifyArtifactTest extends TestCase
 
     public function testVerifiesRealMessageSignatureBundle(): void
     {
-        (new SigstoreVerifier)->verifyArtifact(
+        fact(fn () => (new SigstoreVerifier)->verifyArtifact(
             bundle: $this->bundle(),
             artifact: $this->artifact(),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: $this->policy(),
-        );
-
-        $this->addToAssertionCount(1);
+        ))->doesNotThrow();
     }
 
     public function testVerifyArtifactFromJson(): void
     {
-        (new SigstoreVerifier)->verifyArtifactFromJson(
+        fact(fn () => (new SigstoreVerifier)->verifyArtifactFromJson(
             bundleJson: self::fixture('conformance-msgsig-v0.3.json'),
             artifact: $this->artifact(),
             trustedRootJson: self::fixture('trusted-root-public-good.json'),
             identityPolicy: $this->policy(),
-        );
-
-        $this->addToAssertionCount(1);
+        ))->doesNotThrow();
     }
 
     public function testVerifiesFromArtifactDigest(): void
     {
-        (new SigstoreVerifier)->verifyArtifactDigest(
+        fact(fn () => (new SigstoreVerifier)->verifyArtifactDigest(
             bundle: $this->bundle(),
             algorithm: 'sha256',
             hexDigest: hash('sha256', $this->artifact()),
             trustedRoot: $this->trustedRoot(),
             identityPolicy: $this->policy(),
-        );
-
-        $this->addToAssertionCount(1);
+        ))->doesNotThrow();
     }
 
     public function testVerifyArtifactDigestFromJson(): void
     {
-        (new SigstoreVerifier)->verifyArtifactDigestFromJson(
+        fact(fn () => (new SigstoreVerifier)->verifyArtifactDigestFromJson(
             bundleJson: self::fixture('conformance-msgsig-v0.3.json'),
             algorithm: 'sha256',
             hexDigest: hash('sha256', $this->artifact()),
             trustedRootJson: self::fixture('trusted-root-public-good.json'),
             identityPolicy: $this->policy(),
-        );
-
-        $this->addToAssertionCount(1);
+        ))->doesNotThrow();
     }
 
     public function testVerifiesRekorV2MessageSignatureBundle(): void
@@ -164,15 +156,13 @@ final class VerifyArtifactTest extends TestCase
         // A Rekor v2 bundle (hashedrekord 0.0.2): the entry has no integrated
         // time (an RFC 3161 TSA timestamp stands in) and an Ed25519-signed
         // checkpoint, verified from the artifact digest the entry records.
-        (new SigstoreVerifier)->verifyArtifactDigest(
+        fact(fn () => (new SigstoreVerifier)->verifyArtifactDigest(
             bundle: Bundle::fromJson(self::fixture('conformance-rekor2-msgsig.json')),
             algorithm: 'sha256',
             hexDigest: 'a0cfc71271d6e278e57cd332ff957c3f7043fdda354c4cbb190a30d56efa01bf',
             trustedRoot: TrustedRoot::fromJson(self::fixture('trusted-root-staging.json')),
             identityPolicy: $this->policy(),
-        );
-
-        $this->addToAssertionCount(1);
+        ))->doesNotThrow();
     }
 
     public function testRejectsWrongArtifactDigest(): void

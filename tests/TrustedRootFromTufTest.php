@@ -82,18 +82,18 @@ final class TrustedRootFromTufTest extends TestCase
     {
         $root = TrustedRoot::fromTuf($this->snapshotUpdater($this->snapshotFetcher()));
 
-        fact(count($root->certificateAuthorities))->is(2);
-        fact(count($root->transparencyLogs))->is(2);
-        fact(count($root->ctLogs))->is(2);
-        fact(count($root->timestampAuthorities))->is(1);
+        fact($root->certificateAuthorities)->count(2);
+        fact($root->transparencyLogs)->count(2);
+        fact($root->ctLogs)->count(2);
+        fact($root->timestampAuthorities)->count(1);
     }
 
     public function testFromSigstorePublicGoodUsesInjectedFetcher(): void
     {
         $root = TrustedRoot::fromSigstorePublicGood($this->snapshotFetcher(), $this->referenceTime());
 
-        fact(count($root->certificateAuthorities))->is(2);
-        fact(count($root->transparencyLogs))->is(2);
+        fact($root->certificateAuthorities)->count(2);
+        fact($root->transparencyLogs)->count(2);
     }
 
     public function testMissingTargetThrows(): void
@@ -131,7 +131,7 @@ final class TrustedRootFromTufTest extends TestCase
         );
         $root = TrustedRoot::fromTuf($updater);
 
-        fact(count($root->certificateAuthorities))->is(2);
-        fact(count($root->transparencyLogs))->is(1);
+        fact($root->certificateAuthorities)->count(2);
+        fact($root->transparencyLogs)->count(1);
     }
 }

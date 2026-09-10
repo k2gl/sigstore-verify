@@ -93,9 +93,7 @@ final class SigstoreVerifierTest extends TestCase
 
         fact($envelope->payloadType)->is('application/vnd.in-toto+json');
 
-        $statement = json_decode($envelope->payload, true);
-        fact(is_array($statement))->true();
-        fact($statement['predicateType'])->is('https://slsa.dev/provenance/v0.2');
+        fact($envelope->payload)->jsonPath('predicateType', 'https://slsa.dev/provenance/v0.2');
     }
 
     public function testVerifiesWithMatchingSubjectPolicy(): void

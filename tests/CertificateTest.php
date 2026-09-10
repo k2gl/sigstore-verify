@@ -51,7 +51,7 @@ final class CertificateTest extends TestCase
 
         $utf8String = "\x0c" . chr(strlen(self::EXPECTED_ISSUER)) . self::EXPECTED_ISSUER;
         $position = strpos($der, $utf8String);
-        fact($position !== false)->true();
+        fact($position)->notFalse();
 
         $patched = substr_replace(
             $der,
@@ -71,7 +71,7 @@ final class CertificateTest extends TestCase
         // byte of …57264.1.8 is the arc "8", flip it so the OID no longer matches.
         $v2Oid = "\x06\x0a\x2b\x06\x01\x04\x01\x83\xbf\x30\x01\x08"; // OID 1.3.6.1.4.1.57264.1.8
         $position = strpos($der, $v2Oid);
-        fact($position !== false)->true();
+        fact($position)->notFalse();
 
         $patched = $der[(int) $position + strlen($v2Oid) - 1] === "\x08"
             ? substr_replace($der, "\x07", (int) $position + strlen($v2Oid) - 1, 1)

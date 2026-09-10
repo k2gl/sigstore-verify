@@ -113,15 +113,14 @@ final class RekorInclusionProofTest extends TestCase
 
     public function testVerifiesInclusionProofPath(): void
     {
-        (new RekorVerifier)->verify(
+        fact(fn () => (new RekorVerifier)->verify(
             entry: $this->entry($this->rootHash),
             trustedRoot: $this->trustedRoot,
             expectedHashHex: hash('sha256', self::PAYLOAD),
             expectedSignature: self::SIGNATURE,
             signingCertificateDer: null,
             requireInclusionProof: true,
-        );
-        $this->addToAssertionCount(1);
+        ))->doesNotThrow();
     }
 
     public function testRejectsTamperedRoot(): void

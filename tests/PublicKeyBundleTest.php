@@ -121,13 +121,12 @@ final class PublicKeyBundleTest extends TestCase
         $signature = $private->sign(self::ARTIFACT);
         $bundle = $this->artifactBundle($hashAlgorithm, $signature);
 
-        (new SigstoreVerifier)->verifyArtifactWithPublicKey(
+        fact(fn () => (new SigstoreVerifier)->verifyArtifactWithPublicKey(
             $bundle,
             self::ARTIFACT,
             $publicKeyPem,
             $this->trustedRoot(),
-        );
-        $this->addToAssertionCount(1);
+        ))->doesNotThrow();
     }
 
     #[DataProvider('artifactAlgorithms')]
@@ -138,14 +137,13 @@ final class PublicKeyBundleTest extends TestCase
         $bundle = $this->artifactBundle($hashAlgorithm, $signature);
         $hash = $this->digest($hashAlgorithm);
 
-        (new SigstoreVerifier)->verifyArtifactDigestWithPublicKey(
+        fact(fn () => (new SigstoreVerifier)->verifyArtifactDigestWithPublicKey(
             $bundle,
             $hash,
             hash($hash, self::ARTIFACT),
             $publicKeyPem,
             $this->trustedRoot(),
-        );
-        $this->addToAssertionCount(1);
+        ))->doesNotThrow();
     }
 
     public function testRejectsWrongArtifactDigest(): void

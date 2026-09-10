@@ -46,7 +46,7 @@ final class SctVerifierTest extends TestCase
 
         (new SctVerifier)->verify($leaf, $this->issuerFor($leaf), $this->trustedRoot()->ctLogs);
 
-        fact($leaf->embeddedSctListBytes() !== null)->true();
+        fact($leaf->embeddedSctListBytes())->notNull();
     }
 
     public function testRejectsUnknownCtLog(): void

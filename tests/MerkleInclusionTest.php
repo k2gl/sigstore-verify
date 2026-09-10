@@ -61,7 +61,7 @@ final class MerkleInclusionTest extends TestCase
             leafHash: $p['leafHash'],
             proof: $p['proof'],
         );
-        fact($root === $p['root'])->true();
+        fact($root)->is($p['root']);
     }
 
     public function testSingleLeafTreeRootIsLeafHash(): void
@@ -73,7 +73,7 @@ final class MerkleInclusionTest extends TestCase
             leafHash: $leaf,
             proof: [],
         );
-        fact($root === $leaf)->true();
+        fact($root)->is($leaf);
     }
 
     public function testRejectsIndexOutOfRange(): void
