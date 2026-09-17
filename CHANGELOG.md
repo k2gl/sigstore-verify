@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.1
+
+- The checkpoint's origin, tree size and root hash are now read by k2gl/signed-note's
+  `Checkpoint` (1.1) rather than parsed here — the last piece of that format kept in this
+  package. `K2gl\Sigstore\Checkpoint` and what it exposes are unchanged; a tree size with
+  leading zeros or a root hash that is not canonical base64 is now refused, which no real
+  checkpoint has.
+
 ## 1.6.0
 
 - Checkpoint parsing now goes through [`k2gl/signed-note`](https://github.com/k2gl/signed-note)
